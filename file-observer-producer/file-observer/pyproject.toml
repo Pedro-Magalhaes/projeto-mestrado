@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "file-observer"
+version = "0.1.0"
+description = ""
+authors = ["Pedro Felipe Santos Magalhaes <pfsmagalhaes@gmail.com>"]
+
+[tool.poetry.scripts]
+start = "file_observer.api.main:start"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.68.1"
+confluent-kafka = "^1.7.0"
+uvicorn = "^0.15.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
