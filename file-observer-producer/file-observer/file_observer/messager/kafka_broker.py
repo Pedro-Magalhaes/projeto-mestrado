@@ -36,7 +36,9 @@ if 'main' in __name__:
     print('Hello')
     kb = KafkaBroker()
     for i in range(1000):
-        m = str(i) + ' blabla' #input('Fala ai: ')
-        kb.send('hello', m)
+        msg = input('Fala ai: ')
+        if msg == "0":
+            break
+        kb.send('monitor_interesse', msg)
     kb.checkpoint()
 

@@ -24,3 +24,13 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  
+  akhq:
+    image: repo.tecgraf.puc-rio.br:18082/tchiotludo/akhq
+    container_name: akhq
+    ports:
+      - "9099:9099"
+    volumes:
+      - ./akhq.yml:/app/application.yml
+    depends_on:
+      - broker
