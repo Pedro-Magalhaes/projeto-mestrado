@@ -21,41 +21,21 @@ func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 	return nil
 }
 
-type Runnable func(c chan bool)
+type Runnable func(chan bool)
 
 func Start(config *kafka.ConfigMap, state *SafeMap) (Runnable, error) {
-	topic := "monitor_interesse"
-	c, err := kafka.NewConsumer(config)
+	consumerRoutine, err := NewConsumer(config, state)
 	if err != nil {
-		fmt.Println("Erro criando consumer. %w,%w\n", topic, c.String())
+		fmt.Println("Erro criando consumer. %w\n", err.Error())
 		return nil, err
 	}
-	f := func(cc chan bool) {
+	f := func(cordchan chan bool) {
+		consumerChan := make(chan bool)
+		go consumerRoutine(consumerChan)
 
-		defer c.Close()
-		err := c.SubscribeTopics([]string{topic}, rebalance)
-		if err != nil {
-			fmt.Println("Erro ao conectar", err)
-			cc <- false
-		} else {
-			fmt.Println("Iniciando espera por mensagens")
-			for {
-				ev := c.Poll(2000)
-				switch e := ev.(type) {
-				case *kafka.Message:
-					fmt.Printf("%% Message on %s:\n%s\n",
-						e.TopicPartition, string(e.Value))
-				case kafka.PartitionEOF:
-					fmt.Printf("%% Reached %v\n", e)
-				case kafka.Error:
-					fmt.Printf("%% ERROR %v\n", e)
-					cc <- false
-				default:
-					fmt.Printf("Ignored %v\n", e)
-				}
-			}
-		}
-		cc <- true // termination
+		<-consumerChan // wait consumer
+		fmt.Println("Coord will end")
+		cordchan <- true // termination
 	}
 	return f, nil
 }

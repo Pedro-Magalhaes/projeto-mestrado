@@ -23,4 +23,6 @@ func main() {
 		go function(end)
 	}
 	<-end
+	fmt.Print("END MAIN!")
+
 }
