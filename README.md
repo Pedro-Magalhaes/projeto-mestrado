@@ -1,3 +1,4 @@
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/Pedro-Magalhaes/projeto-mestrado/Go?label=Monitor%20build)
 # projeto-mestrado
 Repositório para projeto do mestrado
 
