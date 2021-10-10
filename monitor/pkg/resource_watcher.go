@@ -45,33 +45,16 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 			select {
 			case event, ok := <-watcher.Events:
 				if !ok {
-					log.Println("ERROR: watcher.Events ")
-					break
+					log.Println("ERROR: watcher.Events ", event)
+					return
 				}
 				log.Println("event:", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified file:", event.Name)
-					buffer := make([]byte, maxChunkSize)
-					file, err := os.Open(r.path)
+					err := handleFileChange(r, control, maxChunkSize, cb, state)
 					if err != nil {
-						log.Println("ERROR: Could not open file: " + r.path)
 						break
 					}
-					currOffset := r.offset
-					for {
-						bytesRead, err := file.ReadAt(buffer, currOffset)
-						if bytesRead <= 0 || (err != nil && err != io.EOF) {
-							log.Println("Stoping this chunk read, cause: " + err.Error())
-							break
-						}
-						keepSending := cb(buffer[:bytesRead])
-						if !keepSending {
-							break
-						}
-						currOffset += int64(bytesRead)
-					}
-					r.offset = currOffset
-
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -87,10 +70,37 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 	err = watcher.Add(r.path)
 	if err != nil {
 		log.Println("error:", err)
+		control.mu.Lock()
+		control.work = false
+		control.mu.Unlock()
 		setResourceState(state, r, resourceState{false, false})
 		return
 	}
 	<-done
+}
+
+func handleFileChange(r *Resource, control *safeBool, maxChunkSize uint, cb watchCallback, state *ResourceSafeMap) *error {
+	buffer := make([]byte, maxChunkSize)
+	file, err := os.Open(r.path)
+	if err != nil {
+		log.Println("ERROR: Could not open file: " + r.path)
+		return new(error)
+	}
+	currOffset := r.offset
+	for {
+		bytesRead, err := file.ReadAt(buffer, currOffset)
+		if bytesRead <= 0 || (err != nil && err != io.EOF) {
+			log.Println("Stoping this chunk read, cause: " + err.Error())
+			break
+		}
+		keepSending := cb(buffer[:bytesRead])
+		if !keepSending {
+			break
+		}
+		currOffset += int64(bytesRead)
+	}
+	r.offset = currOffset
+	return nil
 }
 
 func setResourceState(state *ResourceSafeMap, r *Resource, resourceState resourceState) {
