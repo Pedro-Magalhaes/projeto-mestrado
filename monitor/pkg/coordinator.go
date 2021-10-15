@@ -23,19 +23,26 @@ func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 
 type Runnable func(chan bool)
 
-func Start(config *kafka.ConfigMap, state *SafeMap) (Runnable, error) {
+func Create(config *kafka.ConfigMap, state *SafeMap) (Runnable, error) {
+	// activeResources := util.NewSafeBoolMap()
 	consumerRoutine, err := NewConsumer(config, state)
 	if err != nil {
 		fmt.Println("Erro criando consumer. %w\n", err.Error())
 		return nil, err
 	}
-	f := func(cordchan chan bool) {
+	f := func(coordchan chan bool) {
 		consumerChan := make(chan bool)
 		go consumerRoutine(consumerChan)
 
-		<-consumerChan // wait consumer
-		fmt.Println("Coord will end")
-		cordchan <- true // termination
+		select {
+		case <-consumerChan:
+			fmt.Println("Coord will end. Got finish message from consumers")
+			coordchan <- true // termination
+		case <-coordchan:
+			fmt.Println("Coord will end. Got finish message from main")
+			close(consumerChan)
+		}
+		// <-consumerChan // wait consumer
 	}
 	return f, nil
 }

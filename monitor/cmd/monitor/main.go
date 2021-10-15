@@ -8,6 +8,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	coord "github.com/pfsmagalhaes/monitor/pkg"
+	"github.com/pfsmagalhaes/monitor/pkg/config"
 )
 
 func captureInterrupt(channel chan bool) {
@@ -34,13 +35,27 @@ func waitTermination(normalChan, abortChan chan bool) {
 }
 
 func main() {
+	c, err := config.LoadConfig("config.json")
+	group := "myGroup"
+	server := "localhost:9092"
+	offset := "earliest"
+	if err != nil {
+		fmt.Println("ERROR LOADING CONFIG FILE...")
+		fmt.Println(err.Error())
+	} else {
+		fmt.Println("CONFIG LOADED")
+		server = c.KafkaUrl
+		offset = c.KafkaStartOffset
+	}
+
 	monitorState := coord.SafeMap{V: make(map[string]bool)}
-	end := make(chan bool)   // used to receive termination notice from the coordinator
-	abort := make(chan bool) // used to receive the interrupt signal
-	function, err := coord.Start(&kafka.ConfigMap{
-		"bootstrap.servers": "localhost:9092",
-		"group.id":          "myGroup",
-		"auto.offset.reset": "earliest"},
+	endChannel := make(chan bool)   // used to receive termination notice from the coordinator
+	abortChannel := make(chan bool) // used to receive the interrupt signal
+
+	coordinatorThread, err := coord.Create(&kafka.ConfigMap{
+		"bootstrap.servers": server,
+		"group.id":          group,
+		"auto.offset.reset": offset},
 		&monitorState)
 	if err != nil {
 		fmt.Print("Bye World!")
@@ -48,8 +63,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	go function(end)
+	go coordinatorThread(endChannel)
 
-	captureInterrupt(abort)
-	waitTermination(end, abort)
+	captureInterrupt(abortChannel)
+	waitTermination(endChannel, abortChannel)
 }

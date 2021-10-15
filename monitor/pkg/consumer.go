@@ -64,9 +64,15 @@ func NewConsumer(config *kafka.ConfigMap, state *SafeMap) (Runnable, error) {
 		if err != nil {
 			fmt.Println("Erro ao conectar", err)
 			cc <- false
-		} else {
-			fmt.Println("Iniciando espera por mensagens")
-			for {
+			return
+		}
+		fmt.Println("Iniciando espera por mensagens")
+		for {
+			select {
+			case <-cc:
+				fmt.Println("consumer channel closed exiting")
+				return
+			default:
 				ev := c.Poll(2000)
 				switch e := ev.(type) {
 				case *kafka.Message:

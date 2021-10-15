@@ -1,0 +1,5 @@
+{
+    "kafkaUrl": "localhost:9092",
+    "kafkaStartOffset": "earliest",
+     "monitorTopic": "monitor_interesse"
+}
