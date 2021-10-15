@@ -1,4 +1,4 @@
-package coord
+package producer
 
 import (
 	"sync"

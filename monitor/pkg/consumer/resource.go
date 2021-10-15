@@ -1,4 +1,4 @@
-package coord
+package consumer
 
 import (
 	"errors"

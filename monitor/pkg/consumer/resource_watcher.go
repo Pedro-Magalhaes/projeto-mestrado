@@ -1,4 +1,4 @@
-package coord
+package consumer
 
 import (
 	"io"
@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
 type safeBool struct {
@@ -18,15 +19,15 @@ type safeBool struct {
 // the boolean will control the offset "commit"
 type watchCallback func([]byte) bool
 
-func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCallback, state *ResourceSafeMap) {
+func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCallback, state *util.ResourceSafeMap) {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
 		log.Printf("Error creating new Watcher:  " + err.Error())
-		setResourceState(state, r, resourceState{false, false})
+		setResourceState(state, r, util.ResourceState{false, false})
 		return
 	}
-	setResourceState(state, r, resourceState{beeingWatched: true})
+	setResourceState(state, r, util.ResourceState{BeeingWatched: true})
 	log.Println("Setando true para watcher")
 	defer watcher.Close()
 	keepWorking := true
@@ -63,7 +64,7 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 				log.Println("ERROR on Watcher:", err)
 			}
 		}
-		setResourceState(state, r, resourceState{false, false})
+		setResourceState(state, r, util.ResourceState{false, false})
 		done <- true
 	}()
 
@@ -73,13 +74,13 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 		control.mu.Lock()
 		control.work = false
 		control.mu.Unlock()
-		setResourceState(state, r, resourceState{false, false})
+		setResourceState(state, r, util.ResourceState{false, false})
 		return
 	}
 	<-done
 }
 
-func handleFileChange(r *Resource, control *safeBool, maxChunkSize uint, cb watchCallback, state *ResourceSafeMap) *error {
+func handleFileChange(r *Resource, control *safeBool, maxChunkSize uint, cb watchCallback, state *util.ResourceSafeMap) *error {
 	buffer := make([]byte, maxChunkSize)
 	file, err := os.Open(r.path)
 	if err != nil {
@@ -103,8 +104,8 @@ func handleFileChange(r *Resource, control *safeBool, maxChunkSize uint, cb watc
 	return nil
 }
 
-func setResourceState(state *ResourceSafeMap, r *Resource, resourceState resourceState) {
-	state.mu.Lock()
-	state.resourceMap[r.path] = resourceState
-	state.mu.Unlock()
+func setResourceState(state *util.ResourceSafeMap, r *Resource, resourceState util.ResourceState) {
+	state.Mu.Lock()
+	state.ResourceMap[r.path] = resourceState
+	state.Mu.Unlock()
 }

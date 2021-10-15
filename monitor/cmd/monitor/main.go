@@ -9,6 +9,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	coord "github.com/pfsmagalhaes/monitor/pkg"
 	"github.com/pfsmagalhaes/monitor/pkg/config"
+	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
 func captureInterrupt(channel chan bool) {
@@ -35,7 +36,7 @@ func waitTermination(normalChan, abortChan chan bool) {
 }
 
 func main() {
-	c, err := config.LoadConfig("config.json")
+	conf, err := config.LoadConfig("config.json")
 	group := "myGroup"
 	server := "localhost:9092"
 	offset := "earliest"
@@ -44,11 +45,11 @@ func main() {
 		fmt.Println(err.Error())
 	} else {
 		fmt.Println("CONFIG LOADED")
-		server = c.KafkaUrl
-		offset = c.KafkaStartOffset
+		server = conf.KafkaUrl
+		offset = conf.KafkaStartOffset
 	}
 
-	monitorState := coord.SafeMap{V: make(map[string]bool)}
+	monitorState := util.SafeBoolMap{Value: make(map[string]bool)}
 	endChannel := make(chan bool)   // used to receive termination notice from the coordinator
 	abortChannel := make(chan bool) // used to receive the interrupt signal
 
@@ -56,7 +57,7 @@ func main() {
 		"bootstrap.servers": server,
 		"group.id":          group,
 		"auto.offset.reset": offset},
-		&monitorState)
+		&monitorState, conf)
 	if err != nil {
 		fmt.Print("Bye World!")
 		fmt.Print(err)
