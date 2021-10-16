@@ -24,7 +24,7 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 
 	if err != nil {
 		log.Printf("Error creating new Watcher:  " + err.Error())
-		setResourceState(state, r, util.ResourceState{false, false})
+		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
 		return
 	}
 	setResourceState(state, r, util.ResourceState{BeeingWatched: true})
@@ -64,7 +64,7 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 				log.Println("ERROR on Watcher:", err)
 			}
 		}
-		setResourceState(state, r, util.ResourceState{false, false})
+		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
 		done <- true
 	}()
 
@@ -74,7 +74,7 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 		control.mu.Lock()
 		control.work = false
 		control.mu.Unlock()
-		setResourceState(state, r, util.ResourceState{false, false})
+		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
 		return
 	}
 	<-done
