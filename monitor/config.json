@@ -1,5 +1,9 @@
 {
     "kafkaUrl": "localhost:9092",
     "kafkaStartOffset": "earliest",
-     "monitorTopic": "monitor_interesse"
+    "monitorTopic": "monitor_interesse",
+    "jobInfoTopic": "job_info",
+    "chunkSize": 64,
+    "stateTopic": "monitor_state",
+    "basePath": "test_files/"
 }

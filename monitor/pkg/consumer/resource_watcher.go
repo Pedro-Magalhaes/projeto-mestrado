@@ -17,9 +17,9 @@ type safeBool struct {
 
 // receive a array of bytes return a boolean
 // the boolean will control the offset "commit"
-type watchCallback func([]byte) bool
+type watchCallback func([]byte, int64) bool
 
-func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCallback, state *util.ResourceSafeMap) {
+func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, state *util.ResourceSafeMap) {
 	watcher, err := fsnotify.NewWatcher()
 
 	if err != nil {
@@ -27,7 +27,7 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
 		return
 	}
-	setResourceState(state, r, util.ResourceState{BeeingWatched: true})
+	setResourceState(state, r, util.ResourceState{BeeingWatched: true, KeepWorking: true})
 	log.Println("Setando true para watcher")
 	defer watcher.Close()
 	keepWorking := true
@@ -35,9 +35,7 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 	go func() {
 		log.Printf("Iniciando loop do watcher")
 		for {
-			control.mu.Lock()
-			keepWorking = control.work
-			control.mu.Unlock()
+			keepWorking = shouldKeepWorking(state, r)
 			if !keepWorking {
 				log.Println("Watcher: Got stopped by control variable")
 				break
@@ -52,7 +50,7 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 				log.Println("event:", event)
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					log.Println("modified file:", event.Name)
-					err := handleFileChange(r, control, maxChunkSize, cb, state)
+					err := handleFileChange(r, maxChunkSize, cb, state)
 					if err != nil {
 						break
 					}
@@ -71,16 +69,13 @@ func WatchResource(r *Resource, control *safeBool, maxChunkSize uint, cb watchCa
 	err = watcher.Add(r.path)
 	if err != nil {
 		log.Println("error:", err)
-		control.mu.Lock()
-		control.work = false
-		control.mu.Unlock()
-		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
+		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false, KeepWorking: false})
 		return
 	}
 	<-done
 }
 
-func handleFileChange(r *Resource, control *safeBool, maxChunkSize uint, cb watchCallback, state *util.ResourceSafeMap) *error {
+func handleFileChange(r *Resource, maxChunkSize uint, cb watchCallback, state *util.ResourceSafeMap) *error {
 	buffer := make([]byte, maxChunkSize)
 	file, err := os.Open(r.path)
 	if err != nil {
@@ -94,7 +89,7 @@ func handleFileChange(r *Resource, control *safeBool, maxChunkSize uint, cb watc
 			log.Println("Stoping this chunk read, cause: " + err.Error())
 			break
 		}
-		keepSending := cb(buffer[:bytesRead])
+		keepSending := cb(buffer[:bytesRead], currOffset)
 		if !keepSending {
 			break
 		}
@@ -108,4 +103,10 @@ func setResourceState(state *util.ResourceSafeMap, r *Resource, resourceState ut
 	state.Mu.Lock()
 	state.ResourceMap[r.path] = resourceState
 	state.Mu.Unlock()
+}
+
+// Todo: check if is safe to read state (Should I use the mutex? or use a channel instead of a boolean)
+func shouldKeepWorking(state *util.ResourceSafeMap, r *Resource) bool {
+	resp := state.ResourceMap[r.path].KeepWorking
+	return resp
 }

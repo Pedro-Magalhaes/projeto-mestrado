@@ -7,7 +7,13 @@ import (
 )
 
 type Config struct {
-	KafkaUrl, KafkaStartOffset, MonitorTopic string
+	KafkaUrl         string `json:"kafkaUrl"`
+	KafkaStartOffset string `json:"kafkaStartOffset"`
+	MonitorTopic     string `json:"monitorTopic"`
+	JobInfoTopic     string `json:"jobInfoTopic"`
+	StateTopic       string `json:"stateTopic"`
+	BasePath         string `json:"basePath"`
+	ChunkSize        uint   `json:"chunkSize"`
 }
 
 func LoadConfig(jsonFile string) (*Config, error) {

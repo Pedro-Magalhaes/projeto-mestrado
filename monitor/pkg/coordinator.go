@@ -15,7 +15,7 @@ type Behaviour func(kafka.Message)
 
 func Create(config *kafka.ConfigMap, state *util.SafeBoolMap, conf *config.Config) (util.Runnable, error) {
 	// activeResources := util.NewSafeBoolMap()
-	consumerRoutine, err := consumer.NewConsumer(config, state)
+	consumerRoutine, err := consumer.NewConsumer(config, conf, state)
 	if err != nil {
 		fmt.Println("Erro criando consumer. %w\n", err.Error())
 		return nil, err

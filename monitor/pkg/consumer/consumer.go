@@ -1,16 +1,32 @@
 package consumer
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/pfsmagalhaes/monitor/pkg/config"
+	"github.com/pfsmagalhaes/monitor/pkg/producer"
 	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
-func callback(v []byte) bool {
-	fmt.Println("Callback chamada")
-	return true
+func buildCallback(p producer.Producer, resource *Resource) watchCallback {
+	return func(v []byte, offset int64) bool { // TODO: tratar erro
+
+		newMsg := util.FileChunkMsg{Msg: v, Offset: offset, Lenth: len(v)}
+
+		msg, err := json.Marshal(newMsg)
+		if err != nil {
+			fmt.Println("ERROR: Could not marshal msg!")
+			fmt.Println(err.Error())
+			return false
+		}
+		encodedTopic := base64.StdEncoding.EncodeToString([]byte(resource.path))
+		p.Write(msg, encodedTopic)
+		return true
+	}
 }
 
 func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
@@ -19,17 +35,18 @@ func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 	return nil
 }
 
-func handleMessage(value []byte, state *util.ResourceSafeMap) {
-	msg := string(value)
-	msg = strings.TrimSpace(msg)
+func handleMessage(value []byte, state *util.ResourceSafeMap, p producer.Producer, conf *config.Config) {
+	file := string(value)
+	file = strings.TrimSpace(file)
+	if conf.BasePath != "" {
+		file = conf.BasePath + file
+	}
 	projeto := "ProjetoPlaceholder"
-	r, err := CreateResource(msg, projeto)
+	r, err := CreateResource(file, projeto)
 	if err != nil {
-		fmt.Println("Error: could not create a resource is the msg a valid path? Msg: " + msg)
+		fmt.Println("Error: could not create a resource is the msg a valid path? Msg: " + file)
 		return
 	}
-
-	safeBool := safeBool{work: true}
 
 	state.Mu.Lock()
 	sm := state.ResourceMap[r.GetPath()]
@@ -38,25 +55,29 @@ func handleMessage(value []byte, state *util.ResourceSafeMap) {
 		fmt.Println("Resourece is already being watched")
 	} else {
 		sm.CreatingWatcher = true
+		sm.KeepWorking = true
 		state.ResourceMap[r.GetPath()] = sm
-		go WatchResource(r, &safeBool, 32, callback, state)
+		cb := buildCallback(p, r)
+		go WatchResource(r, conf.ChunkSize, cb, state)
 	}
 	state.Mu.Unlock()
 
 }
 
-func NewConsumer(config *kafka.ConfigMap, state *util.SafeBoolMap) (util.Runnable, error) {
+func NewConsumer(config *kafka.ConfigMap, conf *config.Config, state *util.SafeBoolMap) (util.Runnable, error) {
 
 	resourcesMap := util.ResourceSafeMap{ResourceMap: make(map[string]util.ResourceState)}
-	topic := "monitor_interesse"
+	topic := conf.MonitorTopic
+	jobInfoTopic := conf.JobInfoTopic
 	c, err := kafka.NewConsumer(config)
+	p := producer.GetProducer()
 	if err != nil {
-		fmt.Println("Erro criando consumer. %w,%w\n", topic, c.String())
+		fmt.Println("Erro criando consumer. Interesse: %w, jobInfo: %w, consumer: %w\n", topic, jobInfoTopic, c.String())
 		return nil, err
 	}
 	f := func(cc chan bool) {
 		defer c.Close()
-		err := c.SubscribeTopics([]string{topic}, rebalance)
+		err := c.SubscribeTopics([]string{topic, jobInfoTopic}, rebalance)
 		if err != nil {
 			fmt.Println("Erro ao conectar", err)
 			cc <- false
@@ -74,15 +95,21 @@ func NewConsumer(config *kafka.ConfigMap, state *util.SafeBoolMap) (util.Runnabl
 				case *kafka.Message:
 					fmt.Printf("%% Message on %s:\n%s\n",
 						e.TopicPartition, string(e.Value))
-					handleMessage(e.Value, &resourcesMap)
+					if strings.Compare(*e.TopicPartition.Topic, topic) == 0 {
+						handleMessage(e.Value, &resourcesMap, p, conf)
+					} else if strings.Compare(*e.TopicPartition.Topic, jobInfoTopic) == 0 {
+						fmt.Printf("Receive job info on topic: %s. message: %s\n", jobInfoTopic, e.Value)
+					} else {
+						fmt.Println("Unknown topic: %w", e.TopicPartition)
+					}
 				case kafka.PartitionEOF:
 					fmt.Printf("%% Reached %v\n", e)
 				case kafka.Error:
 					fmt.Printf("%% CONSUMER ERROR %v\n", e)
-					cc <- false
+					cc <- false // Comunica erro e encerra monitor TODO: Como melhorar?
 					return
-				default:
-					fmt.Printf("Ignored %v\n", e)
+				default: // poll deu timeout.
+					// fmt.Printf("Ignored %v\n", e)
 				}
 			}
 		}
