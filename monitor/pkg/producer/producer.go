@@ -9,7 +9,7 @@ import (
 )
 
 type Producer interface {
-	Write([]byte, string)
+	Write([]byte, string, string)
 }
 
 type producer struct {
@@ -21,8 +21,14 @@ var instance Producer
 
 var conf *config.Config
 
-func (p *producer) Write(b []byte, topic string) {
-	err := p.kProducer.Produce(&kafka.Message{Value: b, TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}}, p.pChannel)
+func (p *producer) Write(b []byte, topic string, key string) {
+	var topicKey []byte
+	if key == "" {
+		topicKey = nil
+	} else {
+		topicKey = []byte(key)
+	}
+	err := p.kProducer.Produce(&kafka.Message{Value: b, Key: topicKey, TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}}, p.pChannel)
 	if err != nil {
 		fmt.Println("ERROR: erro escrevendo para o kakfa. Topic:", topic)
 		fmt.Println(err.Error())

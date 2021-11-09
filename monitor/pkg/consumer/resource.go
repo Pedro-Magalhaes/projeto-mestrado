@@ -12,13 +12,12 @@ type Resource struct {
 	project string
 }
 
-func CreateResource(path string, project string) (*Resource, error) {
+func CreateResource(path, project, jobid string) (*Resource, error) {
 	if strings.EqualFold(strings.TrimSpace(path), "") {
 		return nil, errors.New("empty-path")
 	}
-	paths := strings.Split(path, "/")
 
-	return &Resource{0, path, paths[0], project}, nil
+	return &Resource{0, path, jobid, project}, nil
 }
 
 func (r *Resource) GetPath() string {
@@ -31,4 +30,8 @@ func (r *Resource) GetJobid() string {
 
 func (r *Resource) GetCurrentOffset() int64 {
 	return r.offset
+}
+
+func (r *Resource) SetCurrentOffset(o int64) {
+	r.offset = o
 }

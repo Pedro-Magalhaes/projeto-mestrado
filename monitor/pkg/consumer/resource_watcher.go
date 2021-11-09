@@ -1,6 +1,7 @@
 package consumer
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -27,21 +28,20 @@ func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, state *util
 		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
 		return
 	}
-	setResourceState(state, r, util.ResourceState{BeeingWatched: true, KeepWorking: true})
+	setResourceState(state, r, util.ResourceState{BeeingWatched: true})
 	log.Println("Setando true para watcher")
 	defer watcher.Close()
-	keepWorking := true
+
 	done := make(chan bool)
 	go func() {
 		log.Printf("Iniciando loop do watcher")
 		for {
-			keepWorking = shouldKeepWorking(state, r)
-			if !keepWorking {
-				log.Println("Watcher: Got stopped by control variable")
-				break
-			}
-
+			keepWorking := getKeepWorkingChan(state, r)
 			select {
+			case <-keepWorking:
+				log.Println("Stoping watcher. ", r.GetPath())
+				setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
+				done <- true
 			case event, ok := <-watcher.Events:
 				if !ok {
 					log.Println("ERROR: watcher.Events ", event)
@@ -62,14 +62,12 @@ func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, state *util
 				log.Println("ERROR on Watcher:", err)
 			}
 		}
-		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
-		done <- true
 	}()
 
-	err = watcher.Add(r.path)
+	err = watcher.Add(r.GetPath())
 	if err != nil {
 		log.Println("error:", err)
-		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false, KeepWorking: false})
+		setResourceState(state, r, util.ResourceState{CreatingWatcher: false, BeeingWatched: false})
 		return
 	}
 	<-done
@@ -101,12 +99,21 @@ func handleFileChange(r *Resource, maxChunkSize uint, cb watchCallback, state *u
 
 func setResourceState(state *util.ResourceSafeMap, r *Resource, resourceState util.ResourceState) {
 	state.Mu.Lock()
-	state.ResourceMap[r.path] = resourceState
+	c := state.ResourceMap[r.GetPath()].KeepWorking
+	if resourceState.KeepWorking == nil {
+		resourceState.KeepWorking = c
+	}
+	state.ResourceMap[r.GetPath()] = &resourceState
 	state.Mu.Unlock()
 }
 
 // Todo: check if is safe to read state (Should I use the mutex? or use a channel instead of a boolean)
-func shouldKeepWorking(state *util.ResourceSafeMap, r *Resource) bool {
-	resp := state.ResourceMap[r.path].KeepWorking
-	return resp
+func getKeepWorkingChan(state *util.ResourceSafeMap, r *Resource) chan bool {
+	state.Mu.Lock()
+	c := state.ResourceMap[r.GetPath()].KeepWorking
+	fmt.Println(c, r.GetPath(), state.ResourceMap[r.GetPath()])
+	println(state)
+
+	state.Mu.Unlock()
+	return c
 }

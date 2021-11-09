@@ -5,12 +5,12 @@ import "sync"
 type ResourceState struct {
 	CreatingWatcher bool
 	BeeingWatched   bool
-	KeepWorking     bool
+	KeepWorking     chan bool
 }
 
 type ResourceSafeMap struct {
 	Mu          sync.Mutex
-	ResourceMap map[string]ResourceState
+	ResourceMap map[string]*ResourceState
 }
 
 type SafeMap struct {
@@ -24,4 +24,10 @@ type FileChunkMsg struct {
 	Msg    []byte `json:"msg"`
 	Offset int64  `json:"offset"`
 	Lenth  int    `json:"lenth"`
+}
+
+type InfoMsg struct {
+	Path    string `json:"path"`
+	Project string `json:"project"`
+	Watch   bool   `json:"watch"`
 }

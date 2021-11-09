@@ -24,25 +24,47 @@ func buildCallback(p producer.Producer, resource *Resource) watchCallback {
 			return false
 		}
 		encodedTopic := base64.StdEncoding.EncodeToString([]byte(resource.path))
-		p.Write(msg, encodedTopic)
+		p.Write(msg, encodedTopic, "")
 		return true
 	}
 }
 
+// TODO: Implementar logica para recuperar o estado de uma partição
 func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 	fmt.Print(consumer.String())
 	fmt.Printf("event: %v\n", event)
 	return nil
 }
 
-func handleMessage(value []byte, state *util.ResourceSafeMap, p producer.Producer, conf *config.Config) {
-	file := string(value)
+func handleJobStateMessage(key, value []byte, state *util.ResourceSafeMap, p producer.Producer, conf *config.Config) {
+	msg := util.InfoMsg{Path: "", Watch: false, Project: ""} // convetion: when path empty and watch == false should stop all from job
+	v, err := json.Marshal(msg)
+	if err != nil {
+		fmt.Println("Error writing msg to sop job", err)
+	} else {
+		p.Write(v, "monitor_interesse", string(key))
+	}
+}
+
+func handleMessage(key, value []byte, state *util.ResourceSafeMap, p producer.Producer, conf *config.Config) {
+	jobid := string(key)
+	msg := util.InfoMsg{}
+	if err := json.Unmarshal(value, &msg); err != nil {
+		fmt.Println("Error msg does not respect msg interface!")
+		return
+	}
+
+	file := msg.Path
 	file = strings.TrimSpace(file)
-	if conf.BasePath != "" {
+	if !msg.Watch && file == "" {
+		fmt.Println("Should stop all watcher from Job: ", string(key))
+		fmt.Println("Not implemented!")
+		return
+	}
+	if conf.BasePath != "" { // Fixme: BasePath não deve ficar aqui. Melhor criar o recurso e usar o basePath na hora de iniciar o watcher
 		file = conf.BasePath + file
 	}
-	projeto := "ProjetoPlaceholder"
-	r, err := CreateResource(file, projeto)
+	r, err := CreateResource(file, msg.Project, jobid)
 	if err != nil {
 		fmt.Println("Error: could not create a resource is the msg a valid path? Msg: " + file)
 		return
@@ -51,14 +73,29 @@ func handleMessage(value []byte, state *util.ResourceSafeMap, p producer.Produce
 	state.Mu.Lock()
 	sm := state.ResourceMap[r.GetPath()]
 
-	if sm.BeeingWatched || sm.CreatingWatcher {
-		fmt.Println("Resourece is already being watched")
-	} else {
-		sm.CreatingWatcher = true
-		sm.KeepWorking = true
+	if sm == nil { // creating the first obj
+		sm = &util.ResourceState{CreatingWatcher: false, BeeingWatched: false, KeepWorking: make(chan bool)}
 		state.ResourceMap[r.GetPath()] = sm
-		cb := buildCallback(p, r)
-		go WatchResource(r, conf.ChunkSize, cb, state)
+	}
+
+	if !msg.Watch {
+		fmt.Println("Stoping resource  watcher")
+		if sm.KeepWorking != nil && (sm.BeeingWatched || sm.CreatingWatcher) {
+			close(sm.KeepWorking)
+		} else {
+			fmt.Println("Resourse was not been watched")
+		}
+	} else {
+		if sm.BeeingWatched || sm.CreatingWatcher {
+			fmt.Println("Resource is already being watched")
+		} else {
+			println("consumer state", state)
+			println("consumer resouce", r.GetPath())
+			cb := buildCallback(p, r)
+			sm = &util.ResourceState{CreatingWatcher: true, BeeingWatched: false, KeepWorking: make(chan bool)}
+			state.ResourceMap[r.GetPath()] = sm
+			go WatchResource(r, conf.ChunkSize, cb, state)
+		}
 	}
 	state.Mu.Unlock()
 
@@ -66,7 +103,7 @@ func handleMessage(value []byte, state *util.ResourceSafeMap, p producer.Produce
 
 func NewConsumer(config *kafka.ConfigMap, conf *config.Config, state *util.SafeBoolMap) (util.Runnable, error) {
 
-	resourcesMap := util.ResourceSafeMap{ResourceMap: make(map[string]util.ResourceState)}
+	resourcesMap := util.ResourceSafeMap{ResourceMap: make(map[string]*util.ResourceState)}
 	topic := conf.MonitorTopic
 	jobInfoTopic := conf.JobInfoTopic
 	c, err := kafka.NewConsumer(config)
@@ -96,8 +133,9 @@ func NewConsumer(config *kafka.ConfigMap, conf *config.Config, state *util.SafeB
 					fmt.Printf("%% Message on %s:\n%s\n",
 						e.TopicPartition, string(e.Value))
 					if strings.Compare(*e.TopicPartition.Topic, topic) == 0 {
-						handleMessage(e.Value, &resourcesMap, p, conf)
+						handleMessage(e.Key, e.Value, &resourcesMap, p, conf)
 					} else if strings.Compare(*e.TopicPartition.Topic, jobInfoTopic) == 0 {
+						handleJobStateMessage(e.Key, e.Value, &resourcesMap, p, conf)
 						fmt.Printf("Receive job info on topic: %s. message: %s\n", jobInfoTopic, e.Value)
 					} else {
 						fmt.Println("Unknown topic: %w", e.TopicPartition)
