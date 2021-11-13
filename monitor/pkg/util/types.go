@@ -21,7 +21,7 @@ type SafeMap struct {
 type Runnable func(chan bool)
 
 type FileChunkMsg struct {
-	Msg    []byte `json:"msg"`
+	Msg    string `json:"msg"`
 	Offset int64  `json:"offset"`
 	Lenth  int    `json:"lenth"`
 }

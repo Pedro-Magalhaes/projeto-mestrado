@@ -54,9 +54,10 @@ func main() {
 	abortChannel := make(chan bool) // used to receive the interrupt signal
 
 	coordinatorThread, err := coord.Create(&kafka.ConfigMap{
-		"bootstrap.servers": server,
-		"group.id":          group,
-		"auto.offset.reset": offset},
+		"bootstrap.servers":        server,
+		"group.id":                 group,
+		"allow.auto.create.topics": true,
+		"auto.offset.reset":        offset},
 		&monitorState, conf)
 	if err != nil {
 		fmt.Print("Bye World!")

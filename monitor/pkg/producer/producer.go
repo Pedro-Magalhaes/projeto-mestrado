@@ -2,6 +2,7 @@ package producer
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -47,17 +48,33 @@ func buildProducer() error {
 	if err != nil {
 		return err
 	}
-	channel := make(chan kafka.Event, 100) // TODO: checar numero
+	channel := make(chan kafka.Event, 1000) // TODO: checar numero
 
 	instance = &producer{
 		kProducer: prod,
 		pChannel:  channel,
 	}
+	go func() {
+		log.Println("HELLO WORLD!")
+		for {
+			e := <-channel
+			switch ev := e.(type) {
+			case *kafka.Message:
+				if ev.TopicPartition.Error != nil {
+					fmt.Printf("Failed to deliver message: %v\n", ev.TopicPartition)
+				} else {
+					fmt.Printf("Successfully produced record to topic %s partition [%d] @ offset %v\n",
+						*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)
+				}
+			}
+		}
+	}()
 	return nil
 }
 
 func GetProducer() Producer {
 	if instance == nil {
+		log.Println("Creating producer")
 		err := buildProducer()
 		if err != nil {
 			return nil

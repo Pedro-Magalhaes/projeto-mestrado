@@ -1,7 +1,6 @@
 package consumer
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -15,7 +14,7 @@ import (
 func buildCallback(p producer.Producer, resource *Resource) watchCallback {
 	return func(v []byte, offset int64) bool { // TODO: tratar erro
 
-		newMsg := util.FileChunkMsg{Msg: v, Offset: offset, Lenth: len(v)}
+		newMsg := util.FileChunkMsg{Msg: string(v), Offset: offset, Lenth: len(v)}
 
 		msg, err := json.Marshal(newMsg)
 		if err != nil {
@@ -23,7 +22,7 @@ func buildCallback(p producer.Producer, resource *Resource) watchCallback {
 			fmt.Println(err.Error())
 			return false
 		}
-		encodedTopic := base64.StdEncoding.EncodeToString([]byte(resource.path))
+		encodedTopic := strings.ReplaceAll(resource.path, "/", "__")
 		p.Write(msg, encodedTopic, "")
 		return true
 	}
@@ -101,17 +100,18 @@ func handleMessage(key, value []byte, state *util.ResourceSafeMap, p producer.Pr
 
 }
 
-func NewConsumer(config *kafka.ConfigMap, conf *config.Config, state *util.SafeBoolMap) (util.Runnable, error) {
+func NewConsumer(kConfig *kafka.ConfigMap, conf *config.Config, state *util.SafeBoolMap) (util.Runnable, error) {
 
 	resourcesMap := util.ResourceSafeMap{ResourceMap: make(map[string]*util.ResourceState)}
 	topic := conf.MonitorTopic
 	jobInfoTopic := conf.JobInfoTopic
-	c, err := kafka.NewConsumer(config)
+	c, err := kafka.NewConsumer(kConfig)
 	p := producer.GetProducer()
 	if err != nil {
 		fmt.Println("Erro criando consumer. Interesse: %w, jobInfo: %w, consumer: %w\n", topic, jobInfoTopic, c.String())
 		return nil, err
 	}
+
 	f := func(cc chan bool) {
 		defer c.Close()
 		err := c.SubscribeTopics([]string{topic, jobInfoTopic}, rebalance)

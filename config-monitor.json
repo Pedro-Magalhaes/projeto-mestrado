@@ -1,5 +1,5 @@
 {
-    "kafkaUrl": "localhost:9092",
+    "kafkaUrl": "broker:29092",
     "kafkaStartOffset": "earliest",
     "monitorTopic": "monitor_interesse",
     "jobInfoTopic": "job_info",

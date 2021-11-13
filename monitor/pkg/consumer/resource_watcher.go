@@ -5,16 +5,10 @@ import (
 	"io"
 	"log"
 	"os"
-	"sync"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
-
-type safeBool struct {
-	mu   sync.Mutex
-	work bool
-}
 
 // receive a array of bytes return a boolean
 // the boolean will control the offset "commit"
@@ -57,6 +51,7 @@ func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, state *util
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
+					log.Println("ERROR on Watcher:", err)
 					break
 				}
 				log.Println("ERROR on Watcher:", err)
@@ -89,6 +84,7 @@ func handleFileChange(r *Resource, maxChunkSize uint, cb watchCallback, state *u
 		}
 		keepSending := cb(buffer[:bytesRead], currOffset)
 		if !keepSending {
+			log.Println("Stoping sending, callback asked to stop")
 			break
 		}
 		currOffset += int64(bytesRead)
