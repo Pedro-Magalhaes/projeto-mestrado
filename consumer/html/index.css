@@ -1,0 +1,7 @@
+.log-view {
+    height: 400px;
+    overflow-y: auto;
+}
+.form-container {
+    margin-bottom: 0px;
+}

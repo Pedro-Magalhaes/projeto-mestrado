@@ -22,8 +22,14 @@ func buildCallback(p producer.Producer, resource *Resource) watchCallback {
 			fmt.Println(err.Error())
 			return false
 		}
-		encodedTopic := strings.ReplaceAll(resource.path, "/", "__")
-		p.Write(msg, encodedTopic, "")
+		pathArray := strings.SplitN(resource.path, "/", 1)
+		index := 1
+		if len(pathArray) < 2 { // no basepath
+			index = 0
+		}
+		topic := strings.ReplaceAll(pathArray[index], "/", "__")
+		//encodedTopic := strings.ReplaceAll(resource.path, "/", "__")
+		p.Write(msg, topic, "")
 		return true
 	}
 }

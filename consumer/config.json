@@ -1,0 +1,6 @@
+{
+    "serverPort": "7777",
+    "producerTopic": "monitor_interesse",
+    "jobTopic": "job_info",
+    "kafkaUrl": "localhost:9092"
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <!--Import materialize.css-->
+    <link type="text/css" rel="stylesheet" href="./materialize/css/materialize.min.css"  media="screen,projection"/>
+    <link type="text/css" rel="stylesheet" href="./index.css"  media="screen,projection"/>
+</head>
+<script src='./home.js'></script>
+
+<body>
+
+<h1>Log View</h1>
+
+
+<div class="row form-container">
+    <form id="main" class="col s12" action="#" onsubmit="Submit(this)" onSubmit="Submit(this)">
+        <div class="row">
+            <div class="input-field col s3">
+                <input id="file_name" type="text" class="validate">
+                <label for="file_name">File name</label>
+            </div>
+            <div class="input-field col s3">
+                <input placeholder="j1" value="j1" id="jobid" type="text" class="validate">
+                <label for="jobid">Jobid</label>
+            </div>
+            <div class="input-field col s3">
+                <input placeholder="p1" value="p1" id="projectid" type="text" class="validate">
+                <label for="projectid">Projectid</label>
+            </div>
+            <div class="col">
+                <button class="btn-floating" type="submit" name="action">
+                    <i class="material-icons right">add</i>
+                </button>
+            </div>
+        </div>
+    </form>
+  </div>
+
+  <div id="log-container" class="row">
+
+  </div>
+        
+  <script type="text/javascript" src="./materialize/js/materialize.js"></script>
+</body>
+</html>
