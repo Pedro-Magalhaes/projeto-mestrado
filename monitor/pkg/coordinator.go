@@ -9,13 +9,9 @@ import (
 	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
-type Behaviour func(kafka.Message)
-
-// SafeCounter is safe to use concurrently.
-
-func Create(kConfig *kafka.ConfigMap, state *util.SafeBoolMap, conf *config.Config) (util.Runnable, error) {
+func Create(kConfig *kafka.ConfigMap, conf *config.Config) (util.Runnable, error) {
 	// activeResources := util.NewSafeBoolMap()
-	consumerRoutine, err := consumer.NewConsumer(kConfig, conf, state)
+	consumerRoutine, err := consumer.NewConsumer(kConfig, conf)
 	if err != nil {
 		fmt.Println("Erro criando consumer. %w\n", err.Error())
 		return nil, err

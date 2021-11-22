@@ -22,6 +22,10 @@ var instance Producer
 
 var conf *config.Config
 
+func produce(p *kafka.Producer, msg *kafka.Message, deliveryChan chan kafka.Event) error {
+	return p.Produce(msg, deliveryChan)
+}
+
 func (p *producer) Write(b []byte, topic string, key string) {
 	var topicKey []byte
 	if key == "" {
@@ -29,12 +33,16 @@ func (p *producer) Write(b []byte, topic string, key string) {
 	} else {
 		topicKey = []byte(key)
 	}
-	err := p.kProducer.Produce(&kafka.Message{Value: b, Key: topicKey, TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}}, p.pChannel)
+	err := produce(p.kProducer, &kafka.Message{Value: b, Key: topicKey, TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny}}, p.pChannel)
 	if err != nil {
 		fmt.Println("ERROR: erro escrevendo para o kakfa. Topic:", topic)
 		fmt.Println(err.Error())
 	}
-	p.kProducer.Flush(10) // TODO: Melhorar lógica de produção, deixar o producer enviar no passo dele?
+	// p.kProducer.Flush(10) // TODO: Melhorar lógica de produção, deixar o producer enviar no passo dele?
+}
+
+func createProducer(c *kafka.ConfigMap) (*kafka.Producer, error) {
+	return kafka.NewProducer(c)
 }
 
 func buildProducer() error {
@@ -43,7 +51,7 @@ func buildProducer() error {
 	if err != nil {
 		return err
 	}
-	prod, err := kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": conf.KafkaUrl, "client.id": time.Now().GoString(),
+	prod, err := createProducer(&kafka.ConfigMap{"bootstrap.servers": conf.KafkaUrl, "client.id": time.Now().GoString(),
 		"acks": "all"})
 	if err != nil {
 		return err
@@ -55,7 +63,6 @@ func buildProducer() error {
 		pChannel:  channel,
 	}
 	go func() {
-		log.Println("HELLO WORLD!")
 		for {
 			e := <-channel
 			switch ev := e.(type) {

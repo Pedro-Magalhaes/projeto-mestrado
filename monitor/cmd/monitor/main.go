@@ -9,7 +9,6 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	coord "github.com/pfsmagalhaes/monitor/pkg"
 	"github.com/pfsmagalhaes/monitor/pkg/config"
-	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
 func captureInterrupt(channel chan bool) {
@@ -49,7 +48,6 @@ func main() {
 		offset = conf.KafkaStartOffset
 	}
 
-	monitorState := util.SafeBoolMap{Value: make(map[string]bool)}
 	endChannel := make(chan bool)   // used to receive termination notice from the coordinator
 	abortChannel := make(chan bool) // used to receive the interrupt signal
 
@@ -58,7 +56,7 @@ func main() {
 		"group.id":                 group,
 		"allow.auto.create.topics": true,
 		"auto.offset.reset":        offset},
-		&monitorState, conf)
+		conf)
 	if err != nil {
 		fmt.Print("Bye World!")
 		fmt.Print(err)

@@ -41,6 +41,7 @@ func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 	return nil
 }
 
+// Will handle msgs on the jobstate topic. When a job finish it will send a msg to the monitor_interesse topic
 func handleJobStateMessage(key, value []byte, state *util.ResourceSafeMap, p producer.Producer, conf *config.Config) {
 	msg := util.InfoMsg{Path: "", Watch: false, Project: ""} // convetion: when path empty and watch == false should stop all from job
 	v, err := json.Marshal(msg)
@@ -106,12 +107,16 @@ func handleMessage(key, value []byte, state *util.ResourceSafeMap, p producer.Pr
 
 }
 
-func NewConsumer(kConfig *kafka.ConfigMap, conf *config.Config, state *util.SafeBoolMap) (util.Runnable, error) {
+func createConsumer(c *kafka.ConfigMap) (*kafka.Consumer, error) {
+	return kafka.NewConsumer(c)
+}
+
+func NewConsumer(kConfig *kafka.ConfigMap, conf *config.Config) (util.Runnable, error) {
 
 	resourcesMap := util.ResourceSafeMap{ResourceMap: make(map[string]*util.ResourceState)}
 	topic := conf.MonitorTopic
 	jobInfoTopic := conf.JobInfoTopic
-	c, err := kafka.NewConsumer(kConfig)
+	c, err := createConsumer(kConfig)
 	p := producer.GetProducer()
 	if err != nil {
 		fmt.Println("Erro criando consumer. Interesse: %w, jobInfo: %w, consumer: %w\n", topic, jobInfoTopic, c.String())

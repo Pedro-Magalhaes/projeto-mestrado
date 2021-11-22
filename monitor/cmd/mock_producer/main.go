@@ -45,14 +45,18 @@ func main() {
 		value := strings.Join(splitText[1:], " ")
 		fmt.Println("enviando mensagem: ", value)
 
-		delivery_chan := make(chan kafka.Event, 10000)
-		err = p.Produce(&kafka.Message{
+		// delivery_chan := make(chan kafka.Event, 10000)
+		p.ProduceChannel() <- &kafka.Message{
 			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
-			Value:          []byte(value)},
-			delivery_chan,
-		)
+			Value:          []byte(value)}
 
-		e := <-delivery_chan
+		// err = p.Produce(&kafka.Message{
+		// 	TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+		// 	Value:          []byte(value)},
+		// 	delivery_chan,
+		// )
+
+		e := <-p.Events()
 		m := e.(*kafka.Message)
 		fmt.Println(m)
 	}
