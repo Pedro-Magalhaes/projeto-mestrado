@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -55,14 +56,32 @@ func buildProducer() error {
 
 func newKafkaConsumer(path string, ws *websocket.Conn) error {
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{"bootstrap.servers": c.KafkaUrl,
-		"client.id": time.Now().GoString(),
-		"group.id":  time.Now().GoString()})
+		"allow.auto.create.topics": true,
+		"client.id":                time.Now().GoString(),
+		"group.id":                 time.Now().GoString()})
+
+	path = "test_files/" + path
+	topic := strings.ReplaceAll(path, "/", "__")
+
 	if err != nil {
 		log.Println("Error creating consumer: ", err)
 		return err
 	}
-	path = "test_files/" + path
-	topic := strings.ReplaceAll(path, "/", "__")
+	adminClient, err := kafka.NewAdminClientFromConsumer(c)
+	if err != nil {
+		log.Println("Error creating admin client: ", err)
+		return err
+	}
+
+	r, err := adminClient.CreateTopics(context.Background(), []kafka.TopicSpecification{{Topic: topic, NumPartitions: 1, ReplicationFactor: 1}})
+
+	// will ignore as the monitor can also create
+	if err != nil {
+		log.Println("Error creating topic: ", err)
+	} else {
+		fmt.Printf("Topics: %v\n", r)
+	}
+
 	err = c.Subscribe(topic, nil) // will not care for rebalance
 	if err != nil {
 		log.Printf("Error, could not connect to topic %s. Error: %s\n", topic, err)
@@ -85,6 +104,7 @@ func newKafkaConsumer(path string, ws *websocket.Conn) error {
 	})
 	go func(consumer *kafka.Consumer) {
 		defer ws.Close()
+		defer consumer.Close()
 		state := &client{currOffset: 0, topic: topic}
 		for {
 			select {
@@ -92,20 +112,43 @@ func newKafkaConsumer(path string, ws *websocket.Conn) error {
 				log.Printf("Stopping consumer routine\n")
 				return
 			default:
-				ev := consumer.Poll(2000)
-				switch e := ev.(type) {
-				case *kafka.Message:
-					if strings.Compare(*e.TopicPartition.Topic, topic) == 0 {
+				log.Println("Alo")
+				m, e := consumer.ReadMessage(-1)
+
+				if e != nil {
+					log.Printf("%% CONSUMER ERROR %v\n", e)
+					if strings.Contains(e.Error(), "Unknown topic or partition") {
+						log.Println("retring Sub to topic ", topic)
+						consumer.Unsubscribe()
+						// consumer.
+						// consumer.Subscribe(topic, nil)
+					}
+					// if e.IsFatal() {
+					// 	log.Printf("%% Is fatal returning!!\n")
+					// 	return
+					// }
+					// if e.Code() == kafka.ErrUnknownTopicOrPart {
+					// 	log.Println("Unknow topic will try to subscribe again")
+					// 	// time.Sleep(fourSecondsInNano)
+					// 	consumer.Unsubscribe()
+					// 	e2 := consumer.Subscribe(topic, nil)
+					// 	if e2 != nil {
+					// 		log.Println(e)
+					// 	}
+					// 	log.Printf("%#v\n", e)
+					// }
+				} else {
+					if strings.Compare(*m.TopicPartition.Topic, topic) == 0 {
 						msg := FileChunkMsg{}
-						if err := json.Unmarshal(e.Value, &msg); err != nil {
+						if err := json.Unmarshal(m.Value, &msg); err != nil {
 							fmt.Println("Error msg does not respect msg interface!")
 							return
 						}
 						if msg.Offset < state.currOffset {
-							log.Printf("Offset smaller than current. Got %d, Received: %d\n", msg.Offset, state.currOffset)
+							log.Printf("Offset smaller than current. Got %d, expected: %d\n", msg.Offset, state.currOffset)
 							continue
 						} else if msg.Offset > state.currOffset {
-							log.Printf("Offset bigger than current. Got %d, Received: %d\n", msg.Offset, state.currOffset)
+							log.Printf("Offset bigger than current. Got %d, expected: %d\n", msg.Offset, state.currOffset)
 						}
 						state.currOffset = msg.Offset + int64(msg.Lenth)
 						if err := ws.WriteJSON(msg); err != nil {
@@ -114,21 +157,55 @@ func newKafkaConsumer(path string, ws *websocket.Conn) error {
 							return
 						}
 					} else {
-						log.Println("Unknown topic: %w", e.TopicPartition)
+						log.Println("Unknown topic: %w", m.TopicPartition)
 					}
-				case kafka.PartitionEOF:
-					log.Printf("%% Reached %v\n", e)
-				case kafka.Error:
-					log.Printf("%% CONSUMER ERROR %v\n", e)
-					log.Println(e.Code())
-					log.Println(e.IsRetriable())
-					log.Println(e.IsFatal())
-					if e.IsFatal() {
-						return
-					}
-				default: // poll deu timeout.
-					// fmt.Printf("Ignored %v\n", e)
 				}
+				// ev := consumer.Poll(2000)
+				// log.Println(ev)
+				// switch e := ev.(type) {
+				// case *kafka.Message:
+				// 	if strings.Compare(*e.TopicPartition.Topic, topic) == 0 {
+				// 		msg := FileChunkMsg{}
+				// 		if err := json.Unmarshal(e.Value, &msg); err != nil {
+				// 			fmt.Println("Error msg does not respect msg interface!")
+				// 			return
+				// 		}
+				// 		if msg.Offset < state.currOffset {
+				// 			log.Printf("Offset smaller than current. Got %d, expected: %d\n", msg.Offset, state.currOffset)
+				// 			continue
+				// 		} else if msg.Offset > state.currOffset {
+				// 			log.Printf("Offset bigger than current. Got %d, expected: %d\n", msg.Offset, state.currOffset)
+				// 		}
+				// 		state.currOffset = msg.Offset + int64(msg.Lenth)
+				// 		if err := ws.WriteJSON(msg); err != nil {
+				// 			log.Println("ERROR Writing msg to websocket! Stoping routine.", err)
+				// 			ws.Close()
+				// 			return
+				// 		}
+				// 	} else {
+				// 		log.Println("Unknown topic: %w", e.TopicPartition)
+				// 	}
+				// case kafka.PartitionEOF:
+				// 	log.Printf("%% Reached %v\n", e)
+				// case kafka.Error:
+				// 	log.Printf("%% CONSUMER ERROR %v\n", e)
+				// 	if e.IsFatal() {
+				// 		log.Printf("%% Is fatal returning!!\n")
+				// 		return
+				// 	}
+				// 	if e.Code() == kafka.ErrUnknownTopicOrPart {
+				// 		log.Println("Unknow topic will try to subscribe again")
+				// 		// time.Sleep(fourSecondsInNano)
+				// 		consumer.Unsubscribe()
+				// 		e2 := consumer.Subscribe(topic, nil)
+				// 		if e2 != nil {
+				// 			log.Println(e)
+				// 		}
+				// 		log.Printf("%#v\n", e)
+				// 	}
+				// default: // poll deu timeout.
+				// 	fmt.Printf("Ignored %v\n", e)
+				// }
 			}
 		}
 	}(c)

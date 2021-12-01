@@ -10,6 +10,7 @@ func TestCreateResource(t *testing.T) {
 		path    string
 		project string
 		jobid   string
+		p       int32
 	}
 	tests := []struct {
 		name    string
@@ -17,15 +18,15 @@ func TestCreateResource(t *testing.T) {
 		want    *Resource
 		wantErr bool
 	}{
-		{"one name after jobid", args{"a/b", "projectx", "jobid1"}, &Resource{0, "a/b", "jobid1", "projectx"}, false},
-		{"Path without slath", args{"a", "projectx", "jobid1"}, &Resource{0, "a", "jobid1", "projectx"}, false},
-		{"Path with multiple slashes", args{"a/b/c/d", "projectx", "jobid1"}, &Resource{0, "a/b/c/d", "jobid1", "projectx"}, false},
-		{"Empty path", args{"", "projectx", "jobid1"}, nil, true},
-		{"Path with spaces only", args{"  \t\n", "projectx", "jobid1"}, nil, true},
+		{"one name after jobid", args{"a/b", "projectx", "jobid1", 0}, &Resource{0, 0, "a/b", "jobid1", "projectx"}, false},
+		{"Path without slath", args{"a", "projectx", "jobid1", 0}, &Resource{0, 0, "a", "jobid1", "projectx"}, false},
+		{"Path with multiple slashes", args{"a/b/c/d", "projectx", "jobid1", 0}, &Resource{0, 0, "a/b/c/d", "jobid1", "projectx"}, false},
+		{"Empty path", args{"", "projectx", "jobid1", 0}, nil, true},
+		{"Path with spaces only", args{"  \t\n", "projectx", "jobid1", 0}, nil, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := CreateResource(tt.args.path, tt.args.project, tt.args.jobid)
+			got, err := CreateResource(tt.args.path, tt.args.project, tt.args.jobid, tt.args.p)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("CreateResource() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -53,9 +54,9 @@ func TestResource_GetPath(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Resource{
-				offset: tt.fields.offset,
-				path:   tt.fields.path,
-				jobid:  tt.fields.jobid,
+				Offset: tt.fields.offset,
+				Path:   tt.fields.path,
+				Jobid:  tt.fields.jobid,
 			}
 			if got := r.GetPath(); got != tt.want {
 				t.Errorf("Resource.GetPath() = %v, want %v", got, tt.want)
@@ -80,9 +81,9 @@ func TestResource_GetJobid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Resource{
-				offset: tt.fields.offset,
-				path:   tt.fields.path,
-				jobid:  tt.fields.jobid,
+				Offset: tt.fields.offset,
+				Path:   tt.fields.path,
+				Jobid:  tt.fields.jobid,
 			}
 			if got := r.GetJobid(); got != tt.want {
 				t.Errorf("Resource.GetJobid() = %v, want %v", got, tt.want)
@@ -107,9 +108,9 @@ func TestResource_GetCurrentOffset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Resource{
-				offset: tt.fields.offset,
-				path:   tt.fields.path,
-				jobid:  tt.fields.jobid,
+				Offset: tt.fields.offset,
+				Path:   tt.fields.path,
+				Jobid:  tt.fields.jobid,
 			}
 			if got := r.GetCurrentOffset(); got != tt.want {
 				t.Errorf("Resource.GetCurrentOffset() = %v, want %v", got, tt.want)
@@ -142,10 +143,10 @@ func TestResource_SetCurrentOffset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Resource{
-				offset:  tt.fields.offset,
-				path:    tt.fields.path,
-				jobid:   tt.fields.jobid,
-				project: tt.fields.project,
+				Offset:  tt.fields.offset,
+				Path:    tt.fields.path,
+				Jobid:   tt.fields.jobid,
+				Project: tt.fields.project,
 			}
 			r.SetCurrentOffset(tt.args.o)
 			if got := r.GetCurrentOffset(); got != tt.want.o {

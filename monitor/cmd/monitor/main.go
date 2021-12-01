@@ -35,7 +35,7 @@ func waitTermination(normalChan, abortChan chan bool) {
 }
 
 func main() {
-	conf, err := config.LoadConfig("config.json")
+	conf, err := config.GetConfig("config.json")
 	group := "myGroup"
 	server := "localhost:9092"
 	offset := "earliest"

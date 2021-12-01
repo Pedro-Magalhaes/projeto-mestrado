@@ -11,6 +11,8 @@ import (
 
 type Producer interface {
 	Write([]byte, string, string)
+	WriteToPartition(value []byte, key []byte, topic string, partition int32)
+	Close()
 }
 
 type producer struct {
@@ -24,6 +26,10 @@ var conf *config.Config
 
 func produce(p *kafka.Producer, msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	return p.Produce(msg, deliveryChan)
+}
+
+func (p *producer) Close() {
+	p.kProducer.Close()
 }
 
 func (p *producer) Write(b []byte, topic string, key string) {
@@ -41,13 +47,24 @@ func (p *producer) Write(b []byte, topic string, key string) {
 	// p.kProducer.Flush(10) // TODO: Melhorar lógica de produção, deixar o producer enviar no passo dele?
 }
 
+func (p *producer) WriteToPartition(value []byte, key []byte, topic string, partition int32) {
+	if partition < 0 {
+		partition = kafka.PartitionAny
+	}
+	err := produce(p.kProducer, &kafka.Message{Value: value, Key: key, TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: partition}}, p.pChannel)
+	if err != nil {
+		fmt.Println("ERROR: erro escrevendo para o kakfa. Topic:", topic)
+		fmt.Println(err.Error())
+	}
+}
+
 func createProducer(c *kafka.ConfigMap) (*kafka.Producer, error) {
 	return kafka.NewProducer(c)
 }
 
 func buildProducer() error {
 	var err error
-	conf, err = config.LoadConfig("config.json") // TODO: melhorar config
+	conf, err = config.GetConfig("config.json") // TODO: melhorar config
 	if err != nil {
 		return err
 	}
@@ -69,9 +86,6 @@ func buildProducer() error {
 			case *kafka.Message:
 				if ev.TopicPartition.Error != nil {
 					fmt.Printf("Failed to deliver message: %v\n", ev.TopicPartition)
-				} else {
-					fmt.Printf("Successfully produced record to topic %s partition [%d] @ offset %v\n",
-						*ev.TopicPartition.Topic, ev.TopicPartition.Partition, ev.TopicPartition.Offset)
 				}
 			}
 		}

@@ -4,6 +4,6 @@
     "monitorTopic": "monitor_interesse",
     "jobInfoTopic": "job_info",
     "chunkSize": 1024,
-    "stateTopic": "monitor_state",
+    "stateTopic": "monitor_estado",
     "basePath": "test_files/"
 }

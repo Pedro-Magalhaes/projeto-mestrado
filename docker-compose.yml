@@ -3,7 +3,7 @@ version: '3'
 services:
   monitor:
     image: monitor:0.0.1-snapshot
-    container_name: monitor
+    # container_name: monitor
     depends_on:
       - broker
     volumes:
@@ -47,7 +47,7 @@ services:
       - broker
     command: bash -c "
         kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 3 --topic monitor_interesse ;
-        kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 1 --topic monitor_estado ;
+        kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 3 --topic monitor_estado ;
         kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 1 --topic job_info
       "
 
