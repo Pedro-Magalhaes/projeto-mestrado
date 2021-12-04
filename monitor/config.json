@@ -5,5 +5,6 @@
     "jobInfoTopic": "job_info",
     "chunkSize": 1024,
     "stateTopic": "monitor_estado",
-    "basePath": "test_files/"
+    "basePath": "test_files/",
+    "consumerTimeout": 30000
 }

@@ -43,8 +43,9 @@ func (p *producer) Write(b []byte, topic string, key string) {
 	if err != nil {
 		fmt.Println("ERROR: erro escrevendo para o kakfa. Topic:", topic)
 		fmt.Println(err.Error())
+		e := kafka.NewError(0, "Error", true)
+		p.pChannel <- e
 	}
-	// p.kProducer.Flush(10) // TODO: Melhorar lógica de produção, deixar o producer enviar no passo dele?
 }
 
 func (p *producer) WriteToPartition(value []byte, key []byte, topic string, partition int32) {
