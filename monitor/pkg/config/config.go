@@ -15,6 +15,7 @@ type Config struct {
 	StateTopic       string `json:"stateTopic"`
 	BasePath         string `json:"basePath"`
 	ChunkSize        uint   `json:"chunkSize"`
+	ConsumerTimeout  uint   `json:"consumerTimeout"`
 }
 
 var c *Config
@@ -44,9 +45,9 @@ func loadConfig(jsonFile string) (*Config, error) {
 // is used only on the first time its called if
 // a empty string is used the defaul value will be
 // used
-func GetConfig(jsonFile string) (*Config, error) {
+func GetConfig(jsonFile string) (Config, error) {
 	if c != nil {
-		return c, nil
+		return *c, nil
 	}
 	if jsonFile == "" {
 		jsonFile = defaultJsonFile
@@ -57,5 +58,5 @@ func GetConfig(jsonFile string) (*Config, error) {
 		log.Println("Error loading config file: ", jsonFile)
 		panic(err)
 	}
-	return c, nil
+	return *c, nil
 }

@@ -13,6 +13,12 @@ import (
 	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
+/*
+	Cria a callback que vai chamar o producer para escrever os dados recebidos pelo watcher
+	que está observando um arquivo. Essa callback vai ser passada para o resource_watcher
+	Recebe o producer e a referencia para o recurso sendo observado e retorna a função que
+	escreve os dados
+*/
 func buildCallback(p producer.Producer, resource *Resource) watchCallback {
 	return func(v []byte, offset int64) bool { // TODO: tratar erro
 
@@ -30,7 +36,12 @@ func buildCallback(p producer.Producer, resource *Resource) watchCallback {
 	}
 }
 
-// TODO: Implementar logica para recuperar o estado de uma partição
+/*
+	Função que vai tratar o rebalance do grupo de consumidores do tópico que contém as mensagens indicando os
+	recursos que devem ser obsevados. Temos dois eventos que serão tratados: AssignedPartitions e RevokedPartitions
+	Quando uma patição é recebida o monitor vai buscar o estado dessa partição no tópico de estado, se ele existir,
+	e no caso de revoked o monitor vai parar os recursos vinculados as partições
+*/
 func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 	if e, ok := event.(kafka.AssignedPartitions); ok {
 		parts := make(map[int32]bool, len(e.Partitions))
@@ -54,16 +65,25 @@ func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 	return nil
 }
 
+/*
+	Recria os watchers para a lista de recursos recebidos. Não testa para ver se os recursos já estão sendo
+	observados porque só é chamada na recuperação de estado no AssignedPartitions.
+	Recebe uma lista de Resoureces
+*/
 func recoverState(resources []Resource) {
-
 	for _, r := range resources {
 		channel := make(chan bool)
 		resourceState := &ResourceState{CreatingWatcher: true, BeeingWatched: false, KeepWorking: &channel, R: &r}
 		createWatcherForResource(&r, resourceState)
 	}
-
 }
 
+/*
+	Função que trata mensagens recebidas no tópico de jobs. Por enquanto esse tópico é um mock e só recebe
+	mensagens para indicar que um job terminou para que o monitor pare todos os recursos vinculados à ele
+	por isso a função apenas verifica se no objeto recebido existe a string "finshed" e escreve no tópico
+	interesse a mensagem para parar os recursos observados vinculados ao job
+*/
 func handleJobStateMessage(key, value []byte, p producer.Producer) {
 	v := string(value)
 	if strings.Contains(v, "finished") {
@@ -154,6 +174,12 @@ func getLastMsgFromTopicPartition(t string, p map[int32]bool, resourceChan chan 
 	}
 }
 
+/*
+	Função que verifica o último offset enviado no tópico que é usado para enviar o conteudo dos arquivos
+	observados. Se o tópico não existir ou o timeout acabar o recurso começa a ser observado com offset 0
+	O timeout é grande o suficiente para que se o tópico existir, seja possível recuperar a última mensagem
+	do tópico e obter o offset
+*/
 func getConsumerOffset(t string) int64 {
 	conf, _ := config.GetConfig("")
 	kConf := kafka.ConfigMap{
@@ -221,17 +247,23 @@ func getConsumerOffset(t string) int64 {
 	return off
 }
 
+/*
+	Função responsavel por criar a rotina que observa os arquivos.
+*/
 func createWatcherForResource(r *Resource, rs *ResourceState) {
 	p := producer.GetProducer()
 	c, _ := config.GetConfig("") // ignoring error cause at this point the config should have been accessed multiple times
 	cb := buildCallback(p, r)
 	r.PutStateToStateStore(rs)
 	r.SetCurrentOffset(getConsumerOffset(r.GetResourceTopic()))
-	log.Println("Got offset: ", r.Offset)
 
 	go WatchResource(r, c.ChunkSize, cb, *rs)
 }
 
+/*
+	Função que escreve no tópico de estado dos monitores o estado atual de uma partição.
+	Recebe o id de uma partição, o producer e o nome tópico usado para guardar o estado.
+*/
 func writeNewPartitionState(partition int32, p producer.Producer, StateTopic string) {
 	resources := GetPartitionResources(partition)
 	if len(resources) < 1 {
@@ -246,7 +278,13 @@ func writeNewPartitionState(partition int32, p producer.Producer, StateTopic str
 	p.WriteToPartition(v, nil, StateTopic, partition)
 }
 
-func handleMonitorMessage(partition int32, key, value []byte, p producer.Producer, conf *config.Config) {
+/*
+	Função responsável por tratar as mensagens recebidas no tópico que indica os recursos que devem ser
+	observados. Ela vai tratar a mensagem e verificar se é preciso começar um novo watcher para um determinado
+	recurso ou para-lo.
+	Recebe o id da partição do kafka, sua chave, o contúdo, o produtor e a configuração do monitor.
+*/
+func handleMonitorMessage(partition int32, key, value []byte, p producer.Producer, conf config.Config) {
 	jobid := string(key)
 	msg := util.InfoMsg{}
 	if err := json.Unmarshal(value, &msg); err != nil {
@@ -321,11 +359,18 @@ func handleMonitorMessage(partition int32, key, value []byte, p producer.Produce
 	}
 }
 
+/*
+	Cria um novo consumidor do kafka com o configMap recbido
+*/
 func createConsumer(c *kafka.ConfigMap) (*kafka.Consumer, error) {
 	return kafka.NewConsumer(c)
 }
 
-func NewConsumer(kConfig *kafka.ConfigMap, conf *config.Config) (util.Runnable, error) {
+/*
+	Função que retorna a função principal que vai rodar o monitor. Ela retorna uma função
+	que recebe um canal de comunicação para que possa ser parado por quem instanciar o consumidor
+*/
+func NewConsumer(kConfig *kafka.ConfigMap, conf config.Config) (util.Runnable, error) {
 
 	monitorTopic := conf.MonitorTopic
 	jobInfoTopic := conf.JobInfoTopic

@@ -22,7 +22,7 @@ type producer struct {
 
 var instance Producer
 
-var conf *config.Config
+var conf config.Config
 
 func produce(p *kafka.Producer, msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	return p.Produce(msg, deliveryChan)

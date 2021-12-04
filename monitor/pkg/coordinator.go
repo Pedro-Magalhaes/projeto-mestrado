@@ -9,7 +9,7 @@ import (
 	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
-func Create(kConfig *kafka.ConfigMap, conf *config.Config) (util.Runnable, error) {
+func Create(kConfig *kafka.ConfigMap, conf config.Config) (util.Runnable, error) {
 	// activeResources := util.NewSafeBoolMap()
 	consumerRoutine, err := consumer.NewConsumer(kConfig, conf)
 	if err != nil {
