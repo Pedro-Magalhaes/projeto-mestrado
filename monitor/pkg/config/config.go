@@ -8,14 +8,15 @@ import (
 )
 
 type Config struct {
-	KafkaUrl         string `json:"kafkaUrl"`
-	KafkaStartOffset string `json:"kafkaStartOffset"`
-	MonitorTopic     string `json:"monitorTopic"`
-	JobInfoTopic     string `json:"jobInfoTopic"`
-	StateTopic       string `json:"stateTopic"`
-	BasePath         string `json:"basePath"`
-	ChunkSize        uint   `json:"chunkSize"`
-	ConsumerTimeout  uint   `json:"consumerTimeout"`
+	KafkaUrl               string `json:"kafkaUrl"`
+	KafkaStartOffset       string `json:"kafkaStartOffset"`
+	MonitorTopic           string `json:"monitorTopic"`
+	JobInfoTopic           string `json:"jobInfoTopic"`
+	StateTopic             string `json:"stateTopic"`
+	BasePath               string `json:"basePath"`
+	ChunkSize              uint   `json:"chunkSize"`
+	ConsumerTimeout        int    `json:"consumerTimeout"`
+	ConsumerSessionTimeout int    `json:"consumerSessionTimeout"`
 }
 
 var c *Config

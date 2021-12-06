@@ -6,5 +6,6 @@
     "chunkSize": 1024,
     "stateTopic": "monitor_estado",
     "basePath": "test_files/",
-    "consumerTimeout": 30000
+    "consumerTimeout": 30000,
+    "consumerSessionTimeout": 21000
 }

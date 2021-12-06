@@ -394,10 +394,13 @@ func NewConsumer(kConfig *kafka.ConfigMap, conf config.Config) (util.Runnable, e
 
 	monitorTopic := conf.MonitorTopic
 	jobInfoTopic := conf.JobInfoTopic
+	kConfig.SetKey("max.poll.interval.ms", int(conf.ConsumerTimeout))
+	kConfig.SetKey("session.timeout.ms", int(conf.ConsumerSessionTimeout))
+
 	c, err := createConsumer(kConfig)
 	p := producer.GetProducer()
 	if err != nil {
-		fmt.Println("Erro criando consumer. Interesse: %w, jobInfo: %w, consumer: %w\n", monitorTopic, jobInfoTopic, c.String())
+		fmt.Printf("Erro criando consumer. Interesse: %s, jobInfo: %s, consumer: %v\n", monitorTopic, jobInfoTopic, c)
 		return nil, err
 	}
 
