@@ -43,6 +43,7 @@ func buildCallback(p producer.Producer, resource *Resource) watchCallback {
 	e no caso de revoked o monitor vai parar os recursos vinculados as partições
 */
 func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
+	c, _ := config.GetConfig("")
 	if e, ok := event.(kafka.AssignedPartitions); ok {
 		parts := make(map[int32]bool, len(e.Partitions))
 		for _, p := range e.Partitions {
@@ -58,7 +59,13 @@ func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 		}
 		log.Printf("TIME SPENT WAITING FOR STATE RECOVERY: %+v. Segundos: %f\n", time.Since(tBefore), time.Since(tBefore).Seconds())
 	} else if e, ok := event.(kafka.RevokedPartitions); ok {
-		fmt.Printf("HELLO RevokedPartitions>>> %#v\n", e)
+		for _, p := range e.Partitions {
+			if *p.Topic == c.MonitorTopic {
+				log.Printf("Revoking partition %+v\n", p)
+				DeletePartition(p.Partition)
+			}
+		}
+
 	} else {
 		fmt.Printf("REBALANCE ERROR. Unknow type: %#v\n", e)
 	}
@@ -72,30 +79,13 @@ func rebalance(consumer *kafka.Consumer, event kafka.Event) error {
 */
 func recoverState(resources []Resource) {
 	for _, r := range resources {
+		if r.Jobid == "" || r.Path == "" || r.Project == "" {
+			log.Println("Recovery skipped for resource: ", r)
+			continue
+		}
 		channel := make(chan bool)
 		resourceState := &ResourceState{CreatingWatcher: true, BeeingWatched: false, KeepWorking: &channel, R: &r}
 		createWatcherForResource(&r, resourceState)
-	}
-}
-
-/*
-	Função que trata mensagens recebidas no tópico de jobs. Por enquanto esse tópico é um mock e só recebe
-	mensagens para indicar que um job terminou para que o monitor pare todos os recursos vinculados à ele
-	por isso a função apenas verifica se no objeto recebido existe a string "finshed" e escreve no tópico
-	interesse a mensagem para parar os recursos observados vinculados ao job
-*/
-func handleJobStateMessage(key, value []byte, p producer.Producer) {
-	v := string(value)
-	if strings.Contains(v, "finished") {
-		msg := util.InfoMsg{Path: "", Watch: false, Project: ""} // convention: when path empty and watch == false should stop all from job
-		v, err := json.Marshal(msg)
-		if err != nil {
-			fmt.Println("Error writing msg to sop job", err)
-		} else {
-			p.Write(v, "monitor_interesse", string(key))
-		}
-	} else {
-		log.Println("Job not finished. nothing to do.")
 	}
 }
 
@@ -116,11 +106,12 @@ func getLastMsgFromTopicPartition(t string, p map[int32]bool, resourceChan chan 
 	c.Subscribe(t, func(c *kafka.Consumer, e kafka.Event) error {
 		if ev, ok := e.(kafka.AssignedPartitions); ok {
 			fmt.Printf("Assinged MONITOR_ESTADO>>> %#v\n", e)
-			parts := make([]kafka.TopicPartition,
-				len(ev.Partitions))
-			for i, tp := range ev.Partitions {
-				tp.Offset = kafka.OffsetTail(1) // Set start offset to 1 messages from end of partition
-				parts[i] = tp
+			parts := make([]kafka.TopicPartition, 0)
+			for _, tp := range ev.Partitions {
+				if p[tp.Partition] {
+					tp.Offset = kafka.OffsetTail(1) // Set start offset to 1 messages from end of partition
+					parts = append(parts, tp)
+				}
 			}
 			fmt.Printf("Assign %v\n", parts)
 			c.Assign(parts)
@@ -266,16 +257,44 @@ func createWatcherForResource(r *Resource, rs *ResourceState) {
 */
 func writeNewPartitionState(partition int32, p producer.Producer, StateTopic string) {
 	resources := GetPartitionResources(partition)
+	var v []byte
+	var e error
 	if len(resources) < 1 {
 		log.Println("ERROR writeNewPartitionState: LEN OF RESOURCES < 1")
 		log.Printf("RESOURCES: %+v\n", resources)
-	}
-	v, e := json.Marshal(resources)
-	if e != nil {
-		log.Println("Error - writeNewPartitionState: Could not marshal resources!", e)
+		v, e = json.Marshal("[]")
+		if e != nil {
+			log.Println("Error - writeNewPartitionState: Could not marshal empty resource!", e)
+		}
+	} else {
+		v, e = json.Marshal(resources)
+		if e != nil {
+			log.Println("Error - writeNewPartitionState: Could not marshal resources!", e)
+		}
 	}
 
 	p.WriteToPartition(v, nil, StateTopic, partition)
+}
+
+/*
+	Função que trata mensagens recebidas no tópico de jobs. Por enquanto esse tópico é um mock e só recebe
+	mensagens para indicar que um job terminou para que o monitor pare todos os recursos vinculados à ele
+	por isso a função apenas verifica se no objeto recebido existe a string "finshed" e escreve no tópico
+	interesse a mensagem para parar os recursos observados vinculados ao job
+*/
+func handleJobStateMessage(key, value []byte, p producer.Producer) {
+	v := string(value)
+	if strings.Contains(v, "finished") {
+		msg := util.InfoMsg{Path: "", Watch: false, Project: ""} // convention: when path empty and watch == false should stop all from job
+		v, err := json.Marshal(msg)
+		if err != nil {
+			fmt.Println("Error writing msg to sop job", err)
+		} else {
+			p.Write(v, "monitor_interesse", string(key))
+		}
+	} else {
+		log.Println("Job not finished. nothing to do.")
+	}
 }
 
 /*
@@ -294,9 +313,11 @@ func handleMonitorMessage(partition int32, key, value []byte, p producer.Produce
 
 	file := msg.Path
 	file = strings.TrimSpace(file)
+
 	if !msg.Watch && file == "" {
 		fmt.Println("Should stop all watcher from Job: ", string(key))
-		fmt.Println("Not implemented!")
+		DeleteJob(partition, jobid)
+		writeNewPartitionState(partition, p, conf.StateTopic)
 		return
 	}
 	if conf.BasePath != "" { // Fixme: BasePath não deve ficar aqui. Melhor criar o recurso e usar o basePath na hora de iniciar o watcher
@@ -348,10 +369,9 @@ func handleMonitorMessage(partition int32, key, value []byte, p producer.Produce
 		if sm.BeeingWatched || sm.CreatingWatcher {
 			fmt.Println("Resource is already being watched")
 		} else {
-			workChan := make(chan bool)
 			sm.BeeingWatched = false
 			sm.CreatingWatcher = true
-			sm.KeepWorking = &workChan
+			PutResource(partition, jobid, r.GetPath(), sm)
 			createWatcherForResource(r, sm)
 
 			writeNewPartitionState(partition, p, conf.StateTopic)

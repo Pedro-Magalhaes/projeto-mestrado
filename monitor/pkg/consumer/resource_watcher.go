@@ -31,8 +31,18 @@ func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, rs Resource
 	go func() {
 		log.Printf("Iniciando loop do watcher")
 		keepWorking := getKeepWorkingChan(r)
+		jobChan := GetJobChan(rs.R.Jobid)
+		partitionChan := GetPartitionChan(rs.R.Partition)
 		for {
 			select {
+			case <-jobChan:
+				log.Println("Stoping watcher. Partition stoped", r.GetPath())
+				done <- true
+				return
+			case <-partitionChan:
+				log.Println("Stoping watcher. Job stoped", r.GetPath())
+				done <- true
+				return
 			case <-keepWorking:
 				log.Println("Stoping watcher. ", r.GetPath())
 				rs.CreatingWatcher = false
@@ -104,9 +114,13 @@ func setResourceState(r *Resource, resourceState ResourceState) {
 }
 
 func getKeepWorkingChan(r *Resource) chan bool {
+	rState := r.GetStateFromStateStore()
+	if rState == nil {
+		log.Panicf("PANIC, state nil! %+v\nState From Store: %+v\n", r, rState)
+	}
 	c := r.GetStateFromStateStore().KeepWorking
 	if c == nil {
-		log.Panicf("PANIC, Channel nil! %+v\nState From Store: %+v\n", r, r.GetStateFromStateStore())
+		log.Panicf("PANIC, Channel nil! %+v\nState From Store: %+v\n", r, rState)
 	}
 	return *c
 }
