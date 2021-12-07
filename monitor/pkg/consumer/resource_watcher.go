@@ -1,7 +1,7 @@
 /*
 	Pacote que implementa a monitoração de arquivos. Vai criar a monitoração e sempre que houver escrita
 	vai enviar os novos bytes escritos para uma callback recebida. Assume que o arquivo sempre sofre "append"
-	ou seja ele só cresce e nada é deletado. Se
+	ou seja ele só cresce e nada é deletado.
 
 	Autor: Pedro Magalhães
 */

@@ -1,5 +1,5 @@
 /*
-	Pacote com a funcionalidade principal do monitor. Fica responsavel por consumir dos tópicos do serv
+	Pacote com a funcionalidade principal do monitor. Fica responsavel por consumir dos tópicos do
 	kafka e adiconar/remover arquivos monitorados, lidar com rebalancing do consumidores, recuperando o
 	estado de alguma partição que receber no inicio ou durante a execução
 
