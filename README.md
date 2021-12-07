@@ -4,7 +4,5 @@
 Repositório para projeto do mestrado
 
 
-## Projetos com python
-O desenvolvimento vai ser feito usando usando TDD para que o código tenha unitario nas classes. 
-Para facilitar as dependencias de cada parte do projeto vou usar https://python-poetry.org/ para facilitar as dependecias de python (python 3.6+)
-Para as apis usarei a biblioteca FastAPI do python
+## Projetos com golang
+Nesse projeto será implementado um monitor de arquivos em tempo real que usa o kafka para coordenação de réplicas e para enviar trafegar o conteudo dos arquivos entre os monitores e os consumidores.

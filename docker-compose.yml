@@ -49,6 +49,9 @@ services:
         kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 3 --topic monitor_interesse ;
         kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 3 --topic monitor_estado ;
         kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 1 --topic job_info
+        kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 3 --topic test_monitor_interesse ;
+        kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 3 --topic test_monitor_estado ;
+        kafka-topics --create --bootstrap-server broker:29092 --replication-factor 1 --partitions 1 --topic test_job_info
       "
 
   akhq:
