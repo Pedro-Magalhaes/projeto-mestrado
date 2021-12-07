@@ -37,5 +37,5 @@ cd consumer/
 ./run_consumer.sh
 ```
 
-Por padrão o consumidor sobe na porta 7777, assim se podemos acessar a página http://localhost:7777 para executarmos o monitor
+Por padrão o consumidor sobe na porta 7777, assim se podemos acessar a página http://localhost:7777/?action=# para executarmos o monitor
 
