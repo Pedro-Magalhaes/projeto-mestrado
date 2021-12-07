@@ -1,0 +1,11 @@
+{
+    "kafkaUrl": "localhost:9092",
+    "kafkaStartOffset": "earliest",
+    "monitorTopic": "teste_monitor_interesse",
+    "jobInfoTopic": "teste_job_info",
+    "chunkSize": 1024,
+    "stateTopic": "teste_monitor_estado",
+    "basePath": "system/test_files/",
+    "consumerTimeout": 30000,
+    "consumerSessionTimeout": 21000
+}

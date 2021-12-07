@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -34,8 +35,32 @@ func waitTermination(normalChan, abortChan chan bool) {
 	}
 }
 
+// fileExists checks if a file exists and is not a directory before we
+// try using it to prevent further errors.
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
+
 func main() {
-	conf, err := config.GetConfig("config.json")
+	args := os.Args
+	configFile := "config.json"
+	if len(args) > 1 {
+		if fileExists(args[1]) {
+			configFile = args[1] // config file will be the first arg
+		} else {
+			log.Printf("Could not use the received config: %s. Will use the default config: %s\n", args[1], configFile)
+		}
+	}
+	if fileExists(configFile) {
+		log.Printf("Using config: %s.\n", configFile)
+	} else {
+		panic("Could not find a config file.")
+	}
+	conf, err := config.GetConfig(configFile)
 	group := "myGroup"
 	server := "localhost:9092"
 	offset := "earliest"

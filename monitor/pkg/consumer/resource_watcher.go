@@ -1,3 +1,10 @@
+/*
+	Pacote que implementa a monitoração de arquivos. Vai criar a monitoração e sempre que houver escrita
+	vai enviar os novos bytes escritos para uma callback recebida. Assume que o arquivo sempre sofre "append"
+	ou seja ele só cresce e nada é deletado. Se
+
+	Autor: Pedro Magalhães
+*/
 package consumer
 
 import (
@@ -12,6 +19,12 @@ import (
 // the boolean will control the offset "commit"
 type watchCallback func([]byte, int64) bool
 
+/*
+	Função que cria inicia a rotina de observação de um arquivo baseado em um "Resource"
+	sempre que é chamada essa função cria um nova rotina diferente, ou seja, cada arquivo é
+	observado por uma rotina diferente.
+	Essa função é bloqueante e só retorna quando a rotina que observa o arquivo para.
+*/
 func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, rs ResourceState) {
 	watcher, err := fsnotify.NewWatcher()
 
@@ -36,15 +49,15 @@ func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, rs Resource
 		for {
 			select {
 			case <-jobChan:
-				log.Println("Stoping watcher. Partition stoped", r.GetPath())
+				log.Println("Stopping watcher. Job stoped", r.GetPath())
 				done <- true
 				return
 			case <-partitionChan:
-				log.Println("Stoping watcher. Job stoped", r.GetPath())
+				log.Println("Stopping watcher. Partition stoped", r.GetPath())
 				done <- true
 				return
 			case <-keepWorking:
-				log.Println("Stoping watcher. ", r.GetPath())
+				log.Println("Stopping watcher. ", r.GetPath())
 				rs.CreatingWatcher = false
 				rs.BeeingWatched = false
 				setResourceState(r, rs)
@@ -53,6 +66,7 @@ func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, rs Resource
 			case event, ok := <-watcher.Events:
 				if !ok {
 					log.Println("ERROR: watcher.Events ", event)
+					done <- true
 					return
 				}
 				log.Println("event:", event)
@@ -84,6 +98,10 @@ func WatchResource(r *Resource, maxChunkSize uint, cb watchCallback, rs Resource
 	<-done
 }
 
+/*
+	Função que vai ser chamada quando um arquivo sofrer uma escrita. Vai abrir o arquivo ele ler
+	até o fim chamando a callback de "chunk" em "chunk". Ao final atualiza o offset
+*/
 func handleFileChange(r *Resource, maxChunkSize uint, cb watchCallback) *error {
 	buffer := make([]byte, maxChunkSize)
 	file, err := os.Open(r.GetPath())
@@ -109,10 +127,16 @@ func handleFileChange(r *Resource, maxChunkSize uint, cb watchCallback) *error {
 	return nil
 }
 
+/*
+	Função auxiliar para fazer a atualização do estado do recurso
+*/
 func setResourceState(r *Resource, resourceState ResourceState) {
 	r.PutStateToStateStore(&resourceState)
 }
 
+/*
+	Função auxiliar para pegar o canal que indica se um recurso deve parar de ser observado
+*/
 func getKeepWorkingChan(r *Resource) chan bool {
 	rState := r.GetStateFromStateStore()
 	if rState == nil {

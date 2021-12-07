@@ -1,3 +1,8 @@
+/*
+	Pacote que vai carregar a configuração do monitor via arquivo de configuração
+
+	Autor: Pedro Magalhães
+*/
 package config
 
 import (
@@ -21,8 +26,12 @@ type Config struct {
 
 var c *Config
 
-var defaultJsonFile = "config.json"
+var DefaultJsonFile = "config.json"
 
+// Funçao que abre o arquivo json e faz o parse para o objeto do tipo Config
+// é usada na função GetConfig quando a configuração ainda não foi carregada
+// Falha se houver erro ao abrir e ler o arquivo ou se o o arquivo não conter um objeto que
+// possa ser mapeado para o objeto Config
 func loadConfig(jsonFile string) (*Config, error) {
 	file, err := os.Open(jsonFile)
 	if err != nil {
@@ -42,16 +51,21 @@ func loadConfig(jsonFile string) (*Config, error) {
 	return &conf, nil
 }
 
-// return the global config the jsonFile param
-// is used only on the first time its called if
-// a empty string is used the defaul value will be
-// used
+/*
+	Função que é usada para pegar a configuração de um arquivo json.
+	Recebe uma string que indica a localização da configuração, se receber
+	a string vazia ( "" ), utiliza o valor default DefaultJsonFile. Essa
+	função só vai rodar uma vez, nas chamadas subsequentes vai retornar a configuração
+	já obtida em uma chamada anterior, independente do valor da string recebida
+	Retorna a configuração e um erro. Em caso de sucesso a configuração é
+	diferente de nulo e o erro nulo. Em caso de erro é o oposto.
+*/
 func GetConfig(jsonFile string) (Config, error) {
 	if c != nil {
 		return *c, nil
 	}
 	if jsonFile == "" {
-		jsonFile = defaultJsonFile
+		jsonFile = DefaultJsonFile
 	}
 	var err error
 	c, err = loadConfig(jsonFile)

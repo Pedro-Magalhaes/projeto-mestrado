@@ -1,3 +1,10 @@
+/*
+	Pacote com a funcionalidade principal do monitor. Fica responsavel por consumir dos tópicos do serv
+	kafka e adiconar/remover arquivos monitorados, lidar com rebalancing do consumidores, recuperando o
+	estado de alguma partição que receber no inicio ou durante a execução
+
+	Autor: Pedro Magalhães
+*/
 package consumer
 
 import (
@@ -89,6 +96,15 @@ func recoverState(resources []Resource) {
 	}
 }
 
+/*
+	Função que vai recuperar o estado de cada partição pegando a última mensagem enviada para o tópico
+	de "estado" na partição correspondente.
+	Recebe: O nome do tópico, um mapa hash com a chave sendo o id da partição e um boleano indicando se
+	o estado da partição deve ser recuperado e o canal para onde deve enviar o estado de cada partição
+	A função fará um numero fixo de tentativas de recuperar o estado das partições se não conseguir vai
+	enviar uma lista nula para o canal. Isso vai ocorrer quando não ouver mensagens na partição ou ocorrer
+	algum problema de rede.
+*/
 func getLastMsgFromTopicPartition(t string, p map[int32]bool, resourceChan chan []Resource) {
 	conf, _ := config.GetConfig("")
 	kConf := kafka.ConfigMap{
@@ -105,7 +121,7 @@ func getLastMsgFromTopicPartition(t string, p map[int32]bool, resourceChan chan 
 	defer c.Close()
 	c.Subscribe(t, func(c *kafka.Consumer, e kafka.Event) error {
 		if ev, ok := e.(kafka.AssignedPartitions); ok {
-			fmt.Printf("Assinged MONITOR_ESTADO>>> %#v\n", e)
+			log.Printf("Assinged MONITOR_ESTADO>>> %#v\n", ev.Partitions)
 			parts := make([]kafka.TopicPartition, 0)
 			for _, tp := range ev.Partitions {
 				if p[tp.Partition] {
@@ -113,7 +129,7 @@ func getLastMsgFromTopicPartition(t string, p map[int32]bool, resourceChan chan 
 					parts = append(parts, tp)
 				}
 			}
-			fmt.Printf("Assign %v\n", parts)
+			log.Printf("Assign %v\n", parts)
 			c.Assign(parts)
 		}
 		return nil
@@ -124,7 +140,7 @@ func getLastMsgFromTopicPartition(t string, p map[int32]bool, resourceChan chan 
 	}
 	log.Println("GET STATE subscribed to ", t)
 	pCount := 0
-	// seen := make([]bool, len(p))
+
 	for i := 0; i < 20; i++ {
 		if pCount == len(p) {
 			break
@@ -152,7 +168,6 @@ func getLastMsgFromTopicPartition(t string, p map[int32]bool, resourceChan chan 
 			resourceChan <- m
 		case kafka.PartitionEOF:
 			fmt.Printf("%% Reached %v\n", e)
-			// return off
 		case kafka.Error:
 			log.Println("Kafka error when trying to recover monitor state", e)
 
@@ -217,8 +232,6 @@ func getConsumerOffset(t string) int64 {
 				e.TopicPartition.Offset = kafka.OffsetTail(1)
 				c.Assign([]kafka.TopicPartition{e.TopicPartition})
 			}
-			// fmt.Printf("%% ALOALO LLLLL Message on %s:\n%s\n",
-			// 	e.TopicPartition, string(e.Value))
 			m := util.FileChunkMsg{}
 			ee := json.Unmarshal(e.Value, &m)
 			if ee != nil {
@@ -371,7 +384,6 @@ func handleMonitorMessage(partition int32, key, value []byte, p producer.Produce
 		} else {
 			sm.BeeingWatched = false
 			sm.CreatingWatcher = true
-			PutResource(partition, jobid, r.GetPath(), sm)
 			createWatcherForResource(r, sm)
 
 			writeNewPartitionState(partition, p, conf.StateTopic)

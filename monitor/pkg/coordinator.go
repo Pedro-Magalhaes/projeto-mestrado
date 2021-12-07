@@ -1,3 +1,8 @@
+/*
+	Pacote que serve de entrada para a main iniciar o monirtor
+
+	Autor: Pedro Magalhães
+*/
 package coord
 
 import (
@@ -9,6 +14,12 @@ import (
 	"github.com/pfsmagalhaes/monitor/pkg/util"
 )
 
+/*
+	Função que retorna a rotina principal do programa e fica observando o canal
+	da main e do consumer para ver se precisa para o programa
+	Recebe um kafka configMap e a configuração do monitor. Retorna uma função
+	do tipo util.Runnable ou um erro
+*/
 func Create(kConfig *kafka.ConfigMap, conf config.Config) (util.Runnable, error) {
 	// activeResources := util.NewSafeBoolMap()
 	consumerRoutine, err := consumer.NewConsumer(kConfig, conf)

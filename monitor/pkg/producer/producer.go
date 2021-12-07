@@ -1,3 +1,8 @@
+/*
+	Pacote que implementa um singleton para que os outros pacotes possam produzir mensagens para o kafka
+
+	Autor: Pedro Magalhães
+*/
 package producer
 
 import (
@@ -24,14 +29,26 @@ var instance Producer
 
 var conf config.Config
 
+/*
+	Função interna que vai produzir para o producer do kafka a mensagem recebida por parametro
+*/
 func produce(p *kafka.Producer, msg *kafka.Message, deliveryChan chan kafka.Event) error {
 	return p.Produce(msg, deliveryChan)
 }
 
+/*
+	Função publica para fechar o produtor
+*/
 func (p *producer) Close() {
 	p.kProducer.Close()
 }
 
+/*
+	Função publica que trata a escrita do producer
+	Recebe os bytes do conteudo da mensagem (b), o tópico que deve ser enviada a mensagem e a chave do job
+	tópico
+	Se houver erro na produção o erro será enviado para o canal do produtor
+*/
 func (p *producer) Write(b []byte, topic string, key string) {
 	var topicKey []byte
 	if key == "" {
@@ -48,6 +65,10 @@ func (p *producer) Write(b []byte, topic string, key string) {
 	}
 }
 
+/*
+	Função que faz a escrita para uma partição especifica de um tópico.
+	Assume que os parametros são corretos e qualquer erro vai ser apenas logado no console
+*/
 func (p *producer) WriteToPartition(value []byte, key []byte, topic string, partition int32) {
 	if partition < 0 {
 		partition = kafka.PartitionAny
@@ -59,13 +80,20 @@ func (p *producer) WriteToPartition(value []byte, key []byte, topic string, part
 	}
 }
 
+/*
+	Cria um novo produtor do kafka com as configurações recebidas no kafka.ConfigMap
+*/
 func createProducer(c *kafka.ConfigMap) (*kafka.Producer, error) {
 	return kafka.NewProducer(c)
 }
 
+/*
+	Função que faz a inicialização do producer e dá start na rotina que vai ficar ouvindo o canal
+	do produtor para logar algum erro de envio de mensagens
+*/
 func buildProducer() error {
 	var err error
-	conf, err = config.GetConfig("config.json") // TODO: melhorar config
+	conf, err = config.GetConfig("config.json")
 	if err != nil {
 		return err
 	}
@@ -74,7 +102,7 @@ func buildProducer() error {
 	if err != nil {
 		return err
 	}
-	channel := make(chan kafka.Event, 1000) // TODO: checar numero
+	channel := make(chan kafka.Event, 1000)
 
 	instance = &producer{
 		kProducer: prod,
@@ -94,6 +122,10 @@ func buildProducer() error {
 	return nil
 }
 
+/*
+	Função que vai ser usada para obter o producer nos outros módulos.
+	Retorna a instância do produtor, se ela for nula chama a função buildProducer para inicializar o producer
+*/
 func GetProducer() Producer {
 	if instance == nil {
 		log.Println("Creating producer")
