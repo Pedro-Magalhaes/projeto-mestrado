@@ -1,0 +1,213 @@
+?   	github.com/pfsmagalhaes/monitor/cmd/mock_producer	[no test files]
+?   	github.com/pfsmagalhaes/monitor/cmd/monitor	[no test files]
+?   	github.com/pfsmagalhaes/monitor/pkg	[no test files]
+?   	github.com/pfsmagalhaes/monitor/pkg/config	[no test files]
+2021/12/06 22:30:07 StateStore: Starting Routine
+2021/12/06 22:30:07 StateStore: initializeState
+=== RUN   Test_stateHandle
+=== RUN   Test_stateHandle/Lock_order:_1
+2021/12/06 22:30:07 StateStore: PutResource 0 jobid resourceId
+2021/12/06 22:30:07 StateStore: PutResource END
+2021/12/06 22:30:07 StateStore: handlePut. MSG: {r:0xc000182000 msg:{jKey:jobid rKey:resourceId partition:0}}
+2021/12/06 22:30:07 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:false KeepWorking:<nil> R:<nil>}
+=== RUN   Test_stateHandle/Lock_order:_2
+2021/12/06 22:30:07 StateStore: PutResource 0 jobid resourceId
+2021/12/06 22:30:07 StateStore: PutResource END
+2021/12/06 22:30:07 StateStore: handlePut. MSG: {r:0xc0000b6078 msg:{jKey:jobid rKey:resourceId partition:0}}
+2021/12/06 22:30:07 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:false KeepWorking:<nil> R:<nil>}
+2021/12/06 22:30:07 State Store: deleting pattition 0.
+2021/12/06 22:30:07 State Store: closing channel from partition 0.
+=== RUN   Test_stateHandle/Lock_order:_3
+2021/12/06 22:30:08 StateStore: PutResource 0 jobid resourceId
+2021/12/06 22:30:08 StateStore: handlePut. MSG: {r:0xc0000b60a8 msg:{jKey:jobid rKey:resourceId partition:0}}
+2021/12/06 22:30:08 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:false KeepWorking:<nil> R:<nil>}
+2021/12/06 22:30:08 StateStore: PutResource END
+2021/12/06 22:30:08 State Store: deleting pattition 0.
+2021/12/06 22:30:08 State Store: closing channel from partition 0.
+=== RUN   Test_stateHandle/Lock_order:_4
+2021/12/06 22:30:08 StateStore: PutResource 0 jobid resourceId
+2021/12/06 22:30:08 StateStore: PutResource END
+2021/12/06 22:30:08 StateStore: handlePut. MSG: {r:0xc00011c000 msg:{jKey:jobid rKey:resourceId partition:0}}
+2021/12/06 22:30:08 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:false KeepWorking:<nil> R:<nil>}
+2021/12/06 22:30:08 State Store: deleting pattition 0.
+2021/12/06 22:30:08 State Store: closing channel from partition 0.
+=== RUN   Test_stateHandle/Lock_order:_5
+2021/12/06 22:30:08 StateStore: PutResource 0 jobid resourceId
+2021/12/06 22:30:08 StateStore: PutResource END
+2021/12/06 22:30:08 StateStore: handlePut. MSG: {r:0xc00011c018 msg:{jKey:jobid rKey:resourceId partition:0}}
+2021/12/06 22:30:08 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:false KeepWorking:<nil> R:<nil>}
+=== RUN   Test_stateHandle/Lock_order:_6
+2021/12/06 22:30:08 StateStore: PutResource 0 jobid resourceId
+2021/12/06 22:30:08 StateStore: PutResource END
+2021/12/06 22:30:08 StateStore: handlePut. MSG: {r:0xc00011c048 msg:{jKey:jobid rKey:resourceId partition:0}}
+2021/12/06 22:30:08 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:false KeepWorking:<nil> R:<nil>}
+2021/12/06 22:30:08 State Store: deleting pattition 0.
+2021/12/06 22:30:08 State Store: closing channel from partition 0.
+--- PASS: Test_stateHandle (1.22s)
+    --- PASS: Test_stateHandle/Lock_order:_1 (0.20s)
+    --- PASS: Test_stateHandle/Lock_order:_2 (0.20s)
+    --- PASS: Test_stateHandle/Lock_order:_3 (0.20s)
+    --- PASS: Test_stateHandle/Lock_order:_4 (0.20s)
+    --- PASS: Test_stateHandle/Lock_order:_5 (0.20s)
+    --- PASS: Test_stateHandle/Lock_order:_6 (0.20s)
+=== RUN   Test_handleDelete
+=== RUN   Test_handleDelete/Deleta_partição
+2021/12/06 22:30:08 State Store: deleting pattition 0.
+=== RUN   Test_handleDelete/Deleta_job1
+=== RUN   Test_handleDelete/Deleta_recurso
+=== RUN   Test_handleDelete/Deleta_recurso_que_não_existe
+=== RUN   Test_handleDelete/Deleta_job1_quando_ele_não_existe
+=== RUN   Test_handleDelete/Deleta_partição_que_não_existe
+--- PASS: Test_handleDelete (0.00s)
+    --- PASS: Test_handleDelete/Deleta_partição (0.00s)
+    --- PASS: Test_handleDelete/Deleta_job1 (0.00s)
+    --- PASS: Test_handleDelete/Deleta_recurso (0.00s)
+    --- PASS: Test_handleDelete/Deleta_recurso_que_não_existe (0.00s)
+    --- PASS: Test_handleDelete/Deleta_job1_quando_ele_não_existe (0.00s)
+    --- PASS: Test_handleDelete/Deleta_partição_que_não_existe (0.00s)
+=== RUN   Test_handlePut
+=== RUN   Test_handlePut/insere_partição
+2021/12/06 22:30:08 StateStore: handlePut. MSG: {r:0xc00011c1b0 msg:{jKey:jobid1 rKey:rid partition:0}}
+2021/12/06 22:30:08 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:true KeepWorking:<nil> R:<nil>}
+=== RUN   Test_handlePut/insere_job1
+2021/12/06 22:30:08 StateStore: handlePut. MSG: {r:0xc00011c1b0 msg:{jKey:jobid1 rKey:rid partition:0}}
+2021/12/06 22:30:08 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:true KeepWorking:<nil> R:<nil>}
+=== RUN   Test_handlePut/insere_recurso_quando_já_existia
+2021/12/06 22:30:08 StateStore: handlePut. MSG: {r:0xc00011c1b0 msg:{jKey:jobid1 rKey:rid partition:0}}
+2021/12/06 22:30:08 StateStore: Storing resource. MSG: &{CreatingWatcher:false BeeingWatched:true KeepWorking:<nil> R:<nil>}
+--- PASS: Test_handlePut (0.00s)
+    --- PASS: Test_handlePut/insere_partição (0.00s)
+    --- PASS: Test_handlePut/insere_job1 (0.00s)
+    --- PASS: Test_handlePut/insere_recurso_quando_já_existia (0.00s)
+=== RUN   Test_handleGet
+--- PASS: Test_handleGet (0.00s)
+=== RUN   Test_sendStopSignal
+--- PASS: Test_sendStopSignal (0.00s)
+=== RUN   Test_initializeState
+--- PASS: Test_initializeState (0.00s)
+=== RUN   TestStartStateStore
+--- PASS: TestStartStateStore (0.00s)
+=== RUN   TestStopStateStore
+--- PASS: TestStopStateStore (0.00s)
+=== RUN   TestGetJobChan
+--- PASS: TestGetJobChan (0.00s)
+=== RUN   TestGetPartitionChan
+--- PASS: TestGetPartitionChan (0.00s)
+=== RUN   TestGetResource
+=== RUN   TestGetResource/get_p1_job1_resource1
+2021/12/06 22:30:08 StateStore: GetResource 0 jobid1 rid1
+2021/12/06 22:30:08 StateStore: handleGet. MSG: {partitionMap:map[] singleItem:<nil> msg:{jKey:jobid1 rKey:rid1 partition:0}}
+2021/12/06 22:30:08 StateStore: GetResource END
+=== RUN   TestGetResource/get_p2_job1_resource2
+2021/12/06 22:30:08 StateStore: GetResource 1 jobid2 rid2
+2021/12/06 22:30:08 StateStore: handleGet. MSG: {partitionMap:map[] singleItem:<nil> msg:{jKey:jobid2 rKey:rid2 partition:1}}
+2021/12/06 22:30:08 StateStore: GetResource END
+=== RUN   TestGetResource/get_from_inxistent_partition
+2021/12/06 22:30:08 StateStore: GetResource 10 jobid1 rid2
+2021/12/06 22:30:08 StateStore: handleGet. MSG: {partitionMap:map[] singleItem:<nil> msg:{jKey:jobid1 rKey:rid2 partition:10}}
+2021/12/06 22:30:08 StateStore: GetResource END
+=== RUN   TestGetResource/get_from_inxistent_job
+2021/12/06 22:30:08 StateStore: GetResource 0 notFound rid1
+2021/12/06 22:30:08 StateStore: handleGet. MSG: {partitionMap:map[] singleItem:<nil> msg:{jKey:notFound rKey:rid1 partition:0}}
+2021/12/06 22:30:08 StateStore: GetResource END
+=== RUN   TestGetResource/get_from_inxistent_resouce
+2021/12/06 22:30:08 StateStore: GetResource 0 jobid1 notFound
+2021/12/06 22:30:08 StateStore: handleGet. MSG: {partitionMap:map[] singleItem:<nil> msg:{jKey:jobid1 rKey:notFound partition:0}}
+2021/12/06 22:30:08 StateStore: GetResource END
+=== RUN   TestGetResource/get_from_empty_state
+2021/12/06 22:30:08 StateStore: GetResource 0 jobid1 rid1
+2021/12/06 22:30:08 StateStore: handleGet. MSG: {partitionMap:map[] singleItem:<nil> msg:{jKey:jobid1 rKey:rid1 partition:0}}
+2021/12/06 22:30:08 StateStore: GetResource END
+--- PASS: TestGetResource (0.00s)
+    --- PASS: TestGetResource/get_p1_job1_resource1 (0.00s)
+    --- PASS: TestGetResource/get_p2_job1_resource2 (0.00s)
+    --- PASS: TestGetResource/get_from_inxistent_partition (0.00s)
+    --- PASS: TestGetResource/get_from_inxistent_job (0.00s)
+    --- PASS: TestGetResource/get_from_inxistent_resouce (0.00s)
+    --- PASS: TestGetResource/get_from_empty_state (0.00s)
+=== RUN   TestPutResource
+--- PASS: TestPutResource (0.00s)
+=== RUN   TestDeletePartition
+--- PASS: TestDeletePartition (0.00s)
+=== RUN   TestDeleteJob
+--- PASS: TestDeleteJob (0.00s)
+=== RUN   TestGetPartitions
+=== RUN   TestGetPartitions/Three_partitions
+=== RUN   TestGetPartitions/Two_partitions
+=== RUN   TestGetPartitions/empty_state
+--- PASS: TestGetPartitions (0.00s)
+    --- PASS: TestGetPartitions/Three_partitions (0.00s)
+    --- PASS: TestGetPartitions/Two_partitions (0.00s)
+    --- PASS: TestGetPartitions/empty_state (0.00s)
+=== RUN   TestGetPartitionResources
+=== RUN   TestGetPartitionResources/p1_from_complete
+=== RUN   TestGetPartitionResources/p2_from_complete
+=== RUN   TestGetPartitionResources/empty_state
+--- PASS: TestGetPartitionResources (0.00s)
+    --- PASS: TestGetPartitionResources/p1_from_complete (0.00s)
+    --- PASS: TestGetPartitionResources/p2_from_complete (0.00s)
+    --- PASS: TestGetPartitionResources/empty_state (0.00s)
+=== RUN   TestCreateResource
+=== RUN   TestCreateResource/one_name_after_jobid
+=== RUN   TestCreateResource/Path_without_slath
+=== RUN   TestCreateResource/Path_with_multiple_slashes
+=== RUN   TestCreateResource/Empty_path
+=== RUN   TestCreateResource/Path_with_spaces_only
+--- PASS: TestCreateResource (0.00s)
+    --- PASS: TestCreateResource/one_name_after_jobid (0.00s)
+    --- PASS: TestCreateResource/Path_without_slath (0.00s)
+    --- PASS: TestCreateResource/Path_with_multiple_slashes (0.00s)
+    --- PASS: TestCreateResource/Empty_path (0.00s)
+    --- PASS: TestCreateResource/Path_with_spaces_only (0.00s)
+=== RUN   TestResource_GetPath
+=== RUN   TestResource_GetPath/Retorna_o_campo_correto
+--- PASS: TestResource_GetPath (0.00s)
+    --- PASS: TestResource_GetPath/Retorna_o_campo_correto (0.00s)
+=== RUN   TestResource_GetJobid
+=== RUN   TestResource_GetJobid/Retorna_o_campo_correto
+--- PASS: TestResource_GetJobid (0.00s)
+    --- PASS: TestResource_GetJobid/Retorna_o_campo_correto (0.00s)
+=== RUN   TestResource_GetCurrentOffset
+=== RUN   TestResource_GetCurrentOffset/Retorna_o_campo_correto
+--- PASS: TestResource_GetCurrentOffset (0.00s)
+    --- PASS: TestResource_GetCurrentOffset/Retorna_o_campo_correto (0.00s)
+=== RUN   TestResource_SetCurrentOffset
+=== RUN   TestResource_SetCurrentOffset/Retorna_o_campo_correto
+--- PASS: TestResource_SetCurrentOffset (0.00s)
+    --- PASS: TestResource_SetCurrentOffset/Retorna_o_campo_correto (0.00s)
+PASS
+coverage: 17.9% of statements
+ok  	github.com/pfsmagalhaes/monitor/pkg/consumer	(cached)	coverage: 17.9% of statements
+=== RUN   Test_produce
+%5|1638840607.471|MOCK|rdkafka#producer-1| [thrd:app]: Mock cluster enabled: original bootstrap.servers and security.protocol ignored and replaced
+=== RUN   Test_produce/Invalid_message
+=== RUN   Test_produce/valid_message
+--- PASS: Test_produce (0.01s)
+    --- PASS: Test_produce/Invalid_message (0.00s)
+    --- PASS: Test_produce/valid_message (0.00s)
+=== RUN   Test_producer_Write
+%5|1638840607.478|MOCK|rdkafka#producer-2| [thrd:app]: Mock cluster enabled: original bootstrap.servers and security.protocol ignored and replaced
+=== RUN   Test_producer_Write/empty_topic
+ERROR: erro escrevendo para o kakfa. Topic: 
+Local: Invalid argument or configuration
+--- PASS: Test_producer_Write (0.01s)
+    --- PASS: Test_producer_Write/empty_topic (0.00s)
+=== RUN   Test_createProducer
+%5|1638840607.488|MOCK|rdkafka#producer-3| [thrd:app]: Mock cluster enabled: original bootstrap.servers and security.protocol ignored and replaced
+=== RUN   Test_createProducer/Simple_mock_argument
+%5|1638840607.497|MOCK|rdkafka#producer-4| [thrd:app]: Mock cluster enabled: original bootstrap.servers and security.protocol ignored and replaced
+=== RUN   Test_createProducer/Empty_kafka_config
+%5|1638840607.507|CONFWARN|rdkafka#producer-5| [thrd:app]: No `bootstrap.servers` configured: client will not be able to connect to Kafka cluster
+=== RUN   Test_createProducer/Wrong_kafka_config
+--- PASS: Test_createProducer (0.02s)
+    --- PASS: Test_createProducer/Simple_mock_argument (0.01s)
+    --- PASS: Test_createProducer/Empty_kafka_config (0.00s)
+    --- PASS: Test_createProducer/Wrong_kafka_config (0.00s)
+=== RUN   Test_buildProducer
+--- PASS: Test_buildProducer (0.00s)
+=== RUN   TestGetProducer
+--- PASS: TestGetProducer (0.00s)
+PASS
+coverage: 26.8% of statements
+ok  	github.com/pfsmagalhaes/monitor/pkg/producer	(cached)	coverage: 26.8% of statements
+?   	github.com/pfsmagalhaes/monitor/pkg/util	[no test files]
