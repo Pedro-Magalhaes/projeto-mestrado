@@ -18,3 +18,4 @@ venv.bak/
 
 ### Meus ignores
 monitor/test_files
+**/node_modules/**
