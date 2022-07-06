@@ -8,6 +8,9 @@ Repositório para projeto do mestrado
 Nesse projeto será implementado um monitor de arquivos em tempo real que usa o kafka para coordenação de réplicas e para enviar trafegar o conteudo dos arquivos entre os monitores e os consumidores.
 Foi usado o linux e golang 1.17.3. o linux tem que ter o gcc e g++ para a instalação da lib do kafka
 
+## Biblioteca de teste
+
+O projeto em desenvolvimento da biblioteca de testes está na pasta [go-test](./go-test/)
 ## Organização
 
 O programa principal fica na pasta "monitor" e o programa auxiliar que serve para testar o monitor fica na pasta "consumer"

@@ -2,12 +2,14 @@ module github.com/pfsmagalhaes/go-test
 
 go 1.17
 
-require github.com/fsouza/go-dockerclient v1.7.11
+require (
+	github.com/confluentinc/confluent-kafka-go v1.8.2
+	github.com/fsouza/go-dockerclient v1.7.11
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/confluentinc/confluent-kafka-go v1.8.2 // indirect
 	github.com/containerd/containerd v1.6.1 // indirect
 	github.com/docker/docker v20.10.3-0.20220208084023-a5c757555091+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect

@@ -28,7 +28,7 @@ func AddJob() {
 
 }
 
-func (s Stage) StartStage() {
+func (s *Stage) StartStage() {
 	for _, v := range stageJobs[s.Id] {
 		go v.Callback()
 		s.WaitGroup.Done() // o que fazer se o job terminar em outro?

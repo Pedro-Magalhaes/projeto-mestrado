@@ -29,6 +29,24 @@
                 }
 
             ]
+        },
+        {
+            "name": "test_files__test_file_0.txt",
+            "numPartitions": 1,
+            "messages": [{
+                "msg": "",
+                "offset": 0,
+                "lengh": 0
+            }]
+        },
+        {
+            "name": "test_files__test_file_1.txt",
+            "numPartitions": 1,
+            "messages": [{
+                "msg": "",
+                "offset": 0,
+                "lengh": 0
+            }]
         }
     ]      
 }
