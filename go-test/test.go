@@ -12,6 +12,7 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	docker "github.com/fsouza/go-dockerclient"
+	"github.com/pfsmagalhaes/go-test/dockertest"
 	"github.com/pfsmagalhaes/go-test/stage"
 	"github.com/pfsmagalhaes/go-test/topic"
 )
@@ -23,7 +24,7 @@ type FileChunkMsg struct {
 }
 
 var client *docker.Client
-var container *docker.Container
+var containers []*docker.Container
 var err error
 var kafkaAdmClient *kafka.AdminClient
 var kafkaProducer *kafka.Producer
@@ -76,6 +77,7 @@ func setup() {
 	createTopics(t)
 }
 
+// Publica uma mensagem em determinado topico
 func addKafkaMessage(topic, message string) {
 	messageMutex.Lock()
 	if kafkaMessages[topic] == nil {
@@ -85,10 +87,12 @@ func addKafkaMessage(topic, message string) {
 	messageMutex.Unlock()
 }
 
+// Pega a última mensagem de um tópico monitorado
 func getKafkaLastMessage(topic string) string {
 	return getKafkaMessage(topic, len(kafkaMessages[topic]))
 }
 
+// Pega uma mensagem de um tópico monitorado pela posição
 func getKafkaMessage(topic string, pos int) string {
 	messageMutex.Lock()
 	message := kafkaMessages[topic][pos]
@@ -96,6 +100,7 @@ func getKafkaMessage(topic string, pos int) string {
 	return message
 }
 
+// Pega todas as mensagens recebidas em um determinado tópico
 func getKafkaMessagesArray(topic string) []string {
 	var messages []string
 	messageMutex.Lock()
@@ -228,7 +233,7 @@ func checkMessageReceivedWithTimeout(topic string, pos int, expected string, tim
 					err := json.Unmarshal([]byte(msg), &fileChunk)
 					if err != nil {
 						c <- false
-						panic(err)
+						log.Default().Println("ERRO: Não conseguiu fazer unmarshal da mensagem")
 					}
 
 					if strings.Compare(fileChunk.Msg, expected) == 0 {
@@ -237,6 +242,7 @@ func checkMessageReceivedWithTimeout(topic string, pos int, expected string, tim
 						println("Expected:", expected, "Got:", fileChunk.Msg)
 						c <- false
 					}
+					return
 				}
 			}
 		}
@@ -250,14 +256,14 @@ func checkMessageReceivedWithTimeout(topic string, pos int, expected string, tim
 	close(stop)
 }
 
-func writeToFileFabric(fileName, text string) func(chan bool) {
+func writeToFileFactory(fileName, text string) func(chan bool) {
 	return func(c chan bool) {
 		println("DEBUG: writeToFile")
 		writeToFile(fileName, text)
 	}
 }
 
-func continuousWritingFabric(fileName, text string, d time.Duration) func(chan bool) {
+func continuousWritingFactory(fileName, text string, d time.Duration) func(chan bool) {
 	return func(c chan bool) {
 		for {
 			select {
@@ -271,7 +277,7 @@ func continuousWritingFabric(fileName, text string, d time.Duration) func(chan b
 	}
 }
 
-func observeFileFabric(fileName string, d time.Duration) func(chan bool) {
+func observeFileFactory(fileName string, d time.Duration) func(chan bool) {
 	return func(c chan bool) {
 		println("DEBUG: observeFile chamado")
 		observeFile(fileName)
@@ -280,130 +286,120 @@ func observeFileFabric(fileName string, d time.Duration) func(chan bool) {
 	}
 }
 
-func checkMessageReceivedWithTimeoutFabric(topic string, pos int, expected string, timeout time.Duration) func(chan bool) {
+func checkMessageReceivedWithTimeoutFactory(topic string, pos int, expected string, timeout time.Duration) func(chan bool) {
 	return func(c chan bool) {
 		println("DEBUG: checkMessageReceivedWithTimeout chamado")
 		checkMessageReceivedWithTimeout(topic, pos, expected, timeout)
 	}
 }
 
-func checkMessageReceivedWithTimeoutStage2(c chan bool) {
-	println("DEBUG: checkMessageReceivedWithTimeoutStage2")
-	checkMessageReceivedWithTimeout("test_files__test_file_0.txt", 0, linhasArquivo1[0], time.Second*30)
+func stopContainerFactory(client *docker.Client, cId string, timeout uint) func(chan bool) {
+	return func(c chan bool) {
+		stopContainer(client, cId, timeout)
+	}
+}
+
+func stopContainer(client *docker.Client, cId string, timeout uint) error {
+	return client.StopContainer(cId, timeout)
+}
+
+func removeContainer(client *docker.Client, cId string) error {
+	return client.RemoveContainer(docker.RemoveContainerOptions{ID: cId})
 }
 
 // fazer um arrray de WG para que cada job  seja inserido no estagio que ele vai terminar
 func main() {
+	nContainers := 3
 	l := log.Default()
-	var e error
 	topics := []string{"test_files__test_file_0.txt", "test_files__test_file_1.txt"}
+
+	//init debug
+	c, err := dockertest.LoadDockerConfig("sample.json")
+	b, _ := json.Marshal(c)
+
+	if err != nil {
+		println(string(b))
+		panic(-1)
+	}
 
 	defer teardown()
 	internalSetup()
 	setup()
 	startConsumer(topics) // cria uma rotina para receber as mensagens e preencher um mapa [topico] -> [mensagens]
 
-	config := docker.Config{
-		Image:        "monitor:0.0.1-snapshot",
-		OpenStdin:    true,
-		StdinOnce:    true,
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-		// Healthcheck: ,
-	}
-	hostConfig := docker.HostConfig{
-		RestartPolicy: docker.RestartUnlessStopped(),
-		Mounts: []docker.HostMount{
-			{
-				Type:   "bind",
-				Source: "/local/ProgramasLocais/Documents/pessoal/Puc/mestrado/projeto-mestrado/go-test/test_files",
-				Target: "/go/src/app/test_files",
-			},
-			{
-				Type:   "bind",
-				Source: "/local/ProgramasLocais/Documents/pessoal/Puc/mestrado/projeto-mestrado/go-test/config-monitor.json",
-				Target: "/go/src/app/config.json",
-			},
-		},
-	}
-	networkConfig := docker.NetworkingConfig{EndpointsConfig: map[string]*docker.EndpointConfig{"projeto-mestrado_default": {}}}
-	dockerCreatorConfig := docker.CreateContainerOptions{Name: "monitor_1_teste", Config: &config, HostConfig: &hostConfig, NetworkingConfig: &networkConfig}
-
-	container, e = client.CreateContainer(dockerCreatorConfig)
-	if e != nil {
-		l.Printf("e: %v\n", e)
-	} else {
-		l.Printf("c: %v\n", container)
-
+	for i := 0; i < nContainers; i++ {
+		// criar identificador unico
+		containerName := "monitor_teste_" + fmt.Sprint(i)
+		dockerCreatorConfig := docker.CreateContainerOptions{
+			Name:             containerName,
+			Config:           &c.Config,     // Contém a imagem a ser executada
+			HostConfig:       &c.HostConfig, // Contém os binds de arquivos
+			NetworkingConfig: &c.NetworkingConfig,
+		}
+		container, e := client.CreateContainer(dockerCreatorConfig) // TODO: Mover para a chamada docker
+		if e != nil {
+			l.Printf("e: %v\n", e)
+			return
+		}
 		cerr := client.StartContainer(container.ID, container.HostConfig)
-
-		// olhar healthcheck
-
 		if cerr != nil {
 			l.Printf("cerr: %v\n", cerr)
 			return
 		}
-		time.Sleep(time.Second * 7) // esperando para iniciar
-
-		file0 := "test_files/test_file_0.txt"
-		file1 := "test_files/test_file_1.txt"
-		l.Println("Iniciando testes\n")
-		// stages := {
-		// id: 1
-		// 	jobs: {
-		// 		{ funcao: observeFileFabric(file0, 1*time.Second)},
-		// 		{ funcao: observeFileFabric(file1, 1*time.Second)}
-		// 		{funcao: observeFileFabric(file1, 1*time.Second), endId: 3}
-		// 	}
-		// }
-		st1 := stage.CreateStage(1)
-		st1.AddJob(observeFileFabric(file0, 1*time.Second))
-		st1.AddJob(observeFileFabric(file0, 25*time.Second))
-		st1.AddJob(writeToFileFabric(file0, linhasArquivo1[0]))
-		st2 := stage.CreateStage(2)
-		st2.AddJob(checkMessageReceivedWithTimeoutFabric("test_files__test_file_0.txt", 0, linhasArquivo1[0], time.Second*30))
-		st3 := stage.CreateStage(3)
-		st3.AddJob(func(c chan bool) {
-			log.Default().Println("Job do stage 3")
-		})
-		st1.AddJob2(continuousWritingFabric(file1, "Mais uma linha\n", time.Second), st2)
-		l.Println("Rodando stage 1")
-		st1.Run()
-		l.Println("Rodando stage 2")
-		st2.Run()
-		l.Println("Rodando stage 3")
-		st3.Run()
-		// wg1 := stage1()
-		// wg1.Wait()
-		// wg2 := stage2()
-		// wg2.Wait()
-
-		// wg3 := stage3()
-		// wg3.Wait()
-		l.Println("testes finalizados")
+		containers = append(containers, container)
 	}
+
+	// olhar healthcheck do container docker ao invés do sleep
+	time.Sleep(time.Second * 7) // esperando para iniciar
+	stages := stage.Stages{}
+
+	file0 := "test_files/test_file_0.txt"
+	file1 := "test_files/test_file_1.txt"
+	l.Println("Iniciando testes\n")
+	st1 := stage.CreateStage(1)
+	st1.AddJob(observeFileFactory(file0, 1*time.Second))
+	st1.AddJob(observeFileFactory(file0, 25*time.Second))
+	st2 := stage.CreateStage(2)
+	st2.AddJob(stopContainerFactory(client, containers[0].ID, 10)) // para o container 0
+	st2.AddJob(stopContainerFactory(client, containers[1].ID, 10)) // para o container 1 (sobra o 2)
+	// kafkaAdmClient.GetMetadata() // verficar se consigo saber se o rebalancing já ocorreu
+	st2.AddJob(func(c chan bool) { time.Sleep(time.Second * 10) })
+	st2.AddJob(writeToFileFactory(file0, linhasArquivo1[0]))
+	st3 := stage.CreateStage(3)
+	st3.AddJob(checkMessageReceivedWithTimeoutFactory("test_files__test_file_0.txt",
+		0, linhasArquivo1[0], time.Second*30))
+	st4 := stage.CreateStage(4)
+	st4.AddJob(func(c chan bool) {
+		log.Default().Println("Job do stage 4") // fazer a comparação entre o tópico e o arquivo aqui
+	})
+	st1.AddJobMultiStage(continuousWritingFactory(file1, "Mais uma linha\n", time.Second), st3)
+	stages.AddStages([]*stage.Stage{st1, st2, st3, st4})
+	stages.Run()
+	l.Println("testes finalizados")
+
 }
 
+// Preservar os logs dos containers
 func remove(client *docker.Client, container *docker.Container) {
 	fmt.Printf("parando container: %v\n", container.ID)
-	if cerr := client.StopContainer(container.ID, 10); cerr != nil {
+	if cerr := stopContainer(client, container.ID, 10); cerr != nil {
 		fmt.Printf("could not stop container: %v\n", cerr)
 	}
-	if err := client.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID}); err != nil {
+	if err := removeContainer(client, container.ID); err != nil {
 		fmt.Printf("err: %v\n", err)
 	}
 }
 
 func teardown() {
-
-	if container != nil {
-		fmt.Printf("removendo container: %v\n", container.ID)
-		remove(client, container)
-	} else {
-		fmt.Printf("container nulo: %v\n", container)
+	for _, container := range containers {
+		if container != nil {
+			fmt.Printf("removendo container: %v\n", container.ID)
+			remove(client, container)
+		} else {
+			fmt.Printf("container nulo: %v\n", container)
+		}
 	}
+
 	if kafkaAdmClient != nil {
 		println("removendo kafka Adm")
 		kafkaAdmClient.Close()
