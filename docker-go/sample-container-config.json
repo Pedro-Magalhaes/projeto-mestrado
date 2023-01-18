@@ -1,0 +1,16 @@
+{
+    "Config": {
+        "Image": "repo.tecgraf.puc-rio.br:18089/odrtj/odr-complementacao-tj:master"
+    },
+    "HostConfig": {
+        "RestartPolicy": {
+            "Name": "unless-stopped"
+        }
+    },
+    "NetworkingConfig": {
+        "EndpointsConfig": {
+            "dev-dockercompose_default": {}
+        }
+    }
+
+}

@@ -41,7 +41,6 @@ func internalSetup() {
 		fmt.Println("Erro criando adm do kafka")
 		panic(err)
 	}
-
 	// Producer para mandar mensagens
 	kafkaProducer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost:9092",
 		"acks": "all"})
@@ -57,7 +56,6 @@ func internalSetup() {
 		fmt.Println("Erro criando consumer do kafka")
 		panic(err)
 	}
-
 	// Docker client para executar imagens
 	client, err = docker.NewClientFromEnv()
 	if err != nil {
@@ -123,6 +121,7 @@ func handleMessages() {
 		// vou ignorar as keys por enquanto
 		fmt.Printf("Consumed event from topic %s: key = %-10s value = %s\n",
 			*ev.TopicPartition.Topic, string(ev.Key), string(ev.Value))
+
 		addKafkaMessage(*ev.TopicPartition.Topic, string(ev.Value))
 	}
 }
@@ -307,11 +306,86 @@ func removeContainer(client *docker.Client, cId string) error {
 	return client.RemoveContainer(docker.RemoveContainerOptions{ID: cId})
 }
 
-// fazer um arrray de WG para que cada job  seja inserido no estagio que ele vai terminar
+// @TESTE1: Parando monitores durante a execução
+// // fazer um arrray de WG para que cada job  seja inserido no estagio que ele vai terminar
+// func main() {
+// 	nContainers := 3
+// 	l := log.Default()
+// 	topics := []string{"test_files__test_file_0.txt", "test_files__test_file_1.txt"}
+
+// 	//init debug
+// 	c, err := dockertest.LoadDockerConfig("sample.json")
+// 	b, _ := json.Marshal(c)
+
+// 	if err != nil {
+// 		println(string(b))
+// 		panic(-1)
+// 	}
+
+// 	defer teardown()
+// 	internalSetup()
+// 	setup()
+// 	startConsumer(topics) // cria uma rotina para receber as mensagens e preencher um mapa [topico] -> [mensagens]
+
+// 	for i := 0; i < nContainers; i++ {
+// 		// criar identificador unico
+// 		containerName := "monitor_teste_" + fmt.Sprint(i)
+// 		dockerCreatorConfig := docker.CreateContainerOptions{
+// 			Name:             containerName,
+// 			Config:           &c.Config,     // Contém a imagem a ser executada
+// 			HostConfig:       &c.HostConfig, // Contém os binds de arquivos
+// 			NetworkingConfig: &c.NetworkingConfig,
+// 		}
+// 		container, e := client.CreateContainer(dockerCreatorConfig) // TODO: Mover para a chamada docker
+// 		if e != nil {
+// 			l.Printf("e: %v\n", e)
+// 			return
+// 		}
+// 		cerr := client.StartContainer(container.ID, container.HostConfig)
+// 		if cerr != nil {
+// 			l.Printf("cerr: %v\n", cerr)
+// 			return
+// 		}
+// 		containers = append(containers, container)
+// 	}
+
+// 	// olhar healthcheck do container docker ao invés do sleep
+// 	time.Sleep(time.Second * 7) // esperando para iniciar
+// 	stages := stage.Stages{}
+
+// 	file0 := "test_files/test_file_0.txt"
+// 	file1 := "test_files/test_file_1.txt"
+// 	l.Println("Iniciando testes\n")
+// 	st1 := stage.CreateStage(1)
+// 	st1.AddJob(observeFileFactory(file0, 1*time.Second))
+// 	st1.AddJob(observeFileFactory(file0, 25*time.Second))
+// 	st2 := stage.CreateStage(2)
+// 	st2.AddJob(stopContainerFactory(client, containers[0].ID, 10)) // para o container 0
+// 	st2.AddJob(stopContainerFactory(client, containers[1].ID, 10)) // para o container 1 (sobra o 2)
+// 	// kafkaAdmClient.GetMetadata() // verficar se consigo saber se o rebalancing já ocorreu
+// 	st2.AddJob(func(c chan bool) { time.Sleep(time.Second * 10) })
+// 	st2.AddJob(writeToFileFactory(file0, linhasArquivo1[0]))
+// 	st3 := stage.CreateStage(3)
+// 	st3.AddJob(checkMessageReceivedWithTimeoutFactory("test_files__test_file_0.txt",
+// 		0, linhasArquivo1[0], time.Second*30))
+// 	st4 := stage.CreateStage(4)
+// 	st4.AddJob(func(c chan bool) {
+// 		log.Default().Println("Job do stage 4") // fazer a comparação entre o tópico e o arquivo aqui
+// 	})
+// 	st1.AddJobMultiStage(continuousWritingFactory(file1, "Mais uma linha\n", time.Second), st3)
+// 	stages.AddStages([]*stage.Stage{st1, st2, st3, st4})
+// 	stages.Run()
+// 	l.Println("testes finalizados")
+
+// }
+
+// @TESTE2: Bug quando toda a escrita ocorre durante o
+// fazer um array de WG para que cada job  seja inserido no estagio que ele vai terminar
+//
 func main() {
-	nContainers := 3
+	nContainers := 1
 	l := log.Default()
-	topics := []string{"test_files__test_file_0.txt", "test_files__test_file_1.txt"}
+	topics := []string{"test_files__test_file_0.txt"}
 
 	//init debug
 	c, err := dockertest.LoadDockerConfig("sample.json")
@@ -354,30 +428,28 @@ func main() {
 	stages := stage.Stages{}
 
 	file0 := "test_files/test_file_0.txt"
-	file1 := "test_files/test_file_1.txt"
-	l.Println("Iniciando testes\n")
-	st1 := stage.CreateStage(1)
-	st1.AddJob(observeFileFactory(file0, 1*time.Second))
+	l.Println("Iniciando testes")
+	st1 := stage.CreateStage(1) //
+	st1.AddJob(func(c chan bool) { time.Sleep(time.Second * 10) })
+	st1.AddJob(writeToFileFactory(file0, linhasArquivo1[0]))
 	st1.AddJob(observeFileFactory(file0, 25*time.Second))
 	st2 := stage.CreateStage(2)
-	st2.AddJob(stopContainerFactory(client, containers[0].ID, 10)) // para o container 0
-	st2.AddJob(stopContainerFactory(client, containers[1].ID, 10)) // para o container 1 (sobra o 2)
-	// kafkaAdmClient.GetMetadata() // verficar se consigo saber se o rebalancing já ocorreu
-	st2.AddJob(func(c chan bool) { time.Sleep(time.Second * 10) })
-	st2.AddJob(writeToFileFactory(file0, linhasArquivo1[0]))
-	st3 := stage.CreateStage(3)
-	st3.AddJob(checkMessageReceivedWithTimeoutFactory("test_files__test_file_0.txt",
+	// O passo abaixo vai falhar! o monitor não envia o conteudo do arquivo até observar uma mudança (bug)
+	st2.AddJob(checkMessageReceivedWithTimeoutFactory("test_files__test_file_0.txt",
 		0, linhasArquivo1[0], time.Second*30))
-	st4 := stage.CreateStage(4)
-	st4.AddJob(func(c chan bool) {
+	st3 := stage.CreateStage(4)
+	st3.AddJob(func(c chan bool) {
 		log.Default().Println("Job do stage 4") // fazer a comparação entre o tópico e o arquivo aqui
 	})
-	st1.AddJobMultiStage(continuousWritingFactory(file1, "Mais uma linha\n", time.Second), st3)
-	stages.AddStages([]*stage.Stage{st1, st2, st3, st4})
+
+	stages.AddStages([]*stage.Stage{st1, st2, st3})
 	stages.Run()
 	l.Println("testes finalizados")
 
 }
+
+// @TESTE3: Tentar reproduzir caso de falha antes do monitor salvar o estado da partição.
+// Consome msg do "interesse" > Falha > Escrever no "monitor_estado"
 
 // Preservar os logs dos containers
 func remove(client *docker.Client, container *docker.Container) {
