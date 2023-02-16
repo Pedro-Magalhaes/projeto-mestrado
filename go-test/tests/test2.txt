@@ -1,4 +1,4 @@
-package main
+package tests2
 
 import (
 	"context"
@@ -388,7 +388,7 @@ func main() {
 	topics := []string{"test_files__test_file_0.txt"}
 
 	//init debug
-	c, err := dockertest.LoadDockerConfig("sample.json")
+	c, err := dockertest.LoadDockerConfig("complemento_tj.json")
 	b, _ := json.Marshal(c)
 
 	if err != nil {
@@ -430,7 +430,7 @@ func main() {
 	file0 := "test_files/test_file_0.txt"
 	l.Println("Iniciando testes")
 	st1 := stage.CreateStage(1) //
-	st1.AddJob(func(c *chan bool) { time.Sleep(time.Second * 10) })
+	st1.AddJob(func(c chan bool) { time.Sleep(time.Second * 10) })
 	st1.AddJob(writeToFileFactory(file0, linhasArquivo1[0]))
 	st1.AddJob(observeFileFactory(file0, 25*time.Second))
 	st2 := stage.CreateStage(2)

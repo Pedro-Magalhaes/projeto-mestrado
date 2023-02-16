@@ -1,0 +1,28 @@
+{
+    "Config": {
+        "Image": "odr-complementacao-tj:0.0.1-snapshot"
+    },
+    "HostConfig": {
+        "RestartPolicy": {
+            "Name": "unless-stopped"
+        },
+        "Mounts": [
+            {
+                "Type":   "bind",
+                "Source": "/local/ProgramasLocais/Documents/pessoal/Puc/mestrado/projeto-mestrado/go-test/test_files",
+                "Target": "/go/src/app/test_files"
+            },
+            {
+                "Type":   "bind",
+                "Source": "/local/ProgramasLocais/Documents/pessoal/Puc/mestrado/projeto-mestrado/go-test/config-monitor.json",
+                "Target": "/go/src/app/config.json"
+            }
+        ]
+    },
+    "NetworkingConfig": {
+        "EndpointsConfig": {
+            "projeto-mestrado_default": {}
+        }
+    }
+
+}

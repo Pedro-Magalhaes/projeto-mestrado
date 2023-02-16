@@ -3,53 +3,68 @@ package stage
 import (
 	"log"
 	"sync"
+	"time"
 )
 
 type Stage struct {
-	Id        uint
+	Id        string
 	WaitGroup *sync.WaitGroup
 	Jobs      []Job
 	channel   chan bool
 }
 
 type Stages struct {
-	stages map[uint]*Stage
+	stages map[string]*Stage
 }
 
 type Job struct {
 	Begin     *Stage
 	End       *Stage
-	Work      func(chan bool)
+	Work      func(*chan bool)
 	jobChan   chan bool
 	WaitGroup *sync.WaitGroup
 }
 
-func CreateStage(id uint) *Stage {
+func CreateStages() *Stages {
+	return &Stages{
+		make(map[string]*Stage),
+	}
+}
+
+func CreateStage(id string) *Stage {
 	return &Stage{
 		Id:        id,
 		WaitGroup: &sync.WaitGroup{},
-		channel:   make(chan bool, 0),
+		channel:   make(chan bool),
 		Jobs:      []Job{},
 	}
 }
 
 func (st *Stage) runWork(j Job) {
-	j.Work(j.End.channel)
+	go j.Work(&j.End.channel)
 	//println("Job finalizado. Check se job.WG == stage.WG", j.WaitGroup == st.WaitGroup)
+	select {
+	case <-j.End.channel:
+		log.Default().Println("End channel")
+	case <-time.After(15 * time.Second):
+		// colocar em uma propriedade do Stage ou do Job?
+		// como remover pros jobs multistage?
+		log.Default().Println("Job timeout 15s")
+	}
 	if j.Begin == j.End {
 		j.WaitGroup.Done() // como colocar um WG
 	}
 }
 
 // Adicona uma tarefa ao estágio
-func (st *Stage) AddJob(work func(chan bool)) {
+func (st *Stage) AddJob(work func(*chan bool)) {
 	st.AddJobMultiStage(work, st)
 }
 
 // Adiciona uma tarefa que inicia em um estágio mas termina em outro
-func (st *Stage) AddJobMultiStage(work func(chan bool), endStage *Stage) *Job {
+func (st *Stage) AddJobMultiStage(work func(*chan bool), endStage *Stage) *Job {
 	job := Job{
-		jobChan:   make(chan bool, 0),
+		jobChan:   make(chan bool),
 		Work:      work,
 		WaitGroup: endStage.WaitGroup,
 		End:       endStage,
@@ -90,7 +105,7 @@ func (s Stages) AddStages(stages []*Stage) {
 }
 
 // retorna um estágio dado um id
-func (s Stages) GetStage(id uint) *Stage {
+func (s Stages) GetStage(id string) *Stage {
 	return s.stages[id]
 }
 
